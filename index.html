@@ -1,627 +1,734 @@
 <!DOCTYPE html>
 <html lang="si">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ගමේ අලි මුරපද්ධතිය (Elephant Watch)</title>
-
-  <!-- Google Noto Sans Sinhala Font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
-  <style>
-    body {
-      font-family: 'Noto Sans Sinhala', sans-serif;
-    }
-    #map {
-      height: calc(100vh - 64px);
-      width: 100%;
-    }
-  </style>
-</head>
-<body class="bg-gray-100 flex flex-col h-screen overflow-hidden">
-
-  <!-- 1. Header Bar -->
-  <header class="bg-green-800 text-white h-16 px-4 flex items-center justify-between shadow-md z-10">
-    <div class="flex items-center space-x-2">
-      <span class="text-2xl">🐘</span>
-      <h1 class="font-bold text-lg md:text-xl">අලි මුරපද්ධතිය</h1>
-    </div>
-    <div id="userDisplay" class="text-xs md:text-sm bg-green-900/80 px-3 py-1.5 rounded-full border border-green-600 flex items-center gap-2">
-      <i class="fa-solid fa-user text-green-400"></i>
-      <span id="headerUsername">පරිශීලකයා</span>
-      <button onclick="resetUsername()" class="text-xs text-gray-300 hover:text-white underline ml-1" title="නම වෙනස් කරන්න">වෙනස් කරන්න</button>
-    </div>
-  </header>
-
-  <!-- 2. Main Map -->
-  <div id="map"></div>
-
-  <!-- 3. Floating Action Button (FAB) -->
-  <button id="openReportModalBtn" class="fixed bottom-6 right-6 bg-red-600 hover:bg-red-700 text-white font-bold p-4 rounded-full shadow-2xl z-20 flex items-center gap-2 transition transform active:scale-95 border-2 border-white">
-    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-    <span class="hidden md:inline">අලියෙකු වාර්තා කරන්න</span>
-  </button>
-
-  <!-- 4. FIRST-TIME USERNAME MODAL (Phone-specific Login) -->
-  <div id="usernameModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-    <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl transform transition-all">
-      <div class="w-16 h-16 bg-green-100 text-green-700 rounded-full flex items-center justify-center mx-auto text-3xl mb-3">
-        🐘
-      </div>
-      <h2 class="text-2xl font-bold text-gray-800 mb-1">සාදරයෙන් පිළිගනිමු!</h2>
-      <p class="text-xs text-gray-500 mb-6">ගමේ අලි මුරපද්ධතියට ඇතුළු වීමට ඔබගේ නම ඇතුළත් කරන්න. මෙම නම මෙම දුරකථනයේ පමණක් මතක තබා ගනී.</p>
-      
-      <div class="mb-4 text-left">
-        <label class="block text-xs font-bold text-gray-700 mb-1">ඔබගේ නම / අන්වර්ථ නාමය</label>
-        <input type="text" id="usernameInput" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 text-gray-800 font-semibold" placeholder="උදා: සුනිමල් - ගමනැගුම">
-      </div>
-      
-      <button id="saveUsernameBtn" class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-200">
-        ඇතුළු වන්න
-      </button>
-    </div>
-  </div>
-
-  <!-- 5. REPORT SIGHTING MODAL -->
-  <div id="reportModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-40 hidden p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 max-h-[90vh] overflow-y-auto shadow-2xl">
-      <div class="flex justify-between items-center mb-4 border-b pb-2">
-        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-          <i class="fa-solid fa-bullhorn text-red-600"></i>
-          අලි දර්ශනයක් වාර්තා කිරීම
-        </h3>
-        <button id="closeReportModalBtn" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-
-      <form id="sightingForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">අලින් සංඛ්‍යාව</label>
-          <input type="number" id="elephantCount" min="1" value="1" required class="w-full p-2.5 border border-gray-300 rounded-lg">
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">අවදානම් මට්ටම</label>
-
-          <select id="riskLevel" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white font-semibold">
-            <option value="HIGH" class="text-red-600 font-bold">🔴 ඉහළ අවදානම (ගමට ඉතා ආසන්නයි)</option>
-            <option value="MEDIUM" class="text-yellow-600 font-bold" selected>🟡 මධ්‍යම අවදානම (වගා බිම් අසල)</option>
-            <option value="LOW" class="text-green-600 font-bold">🟢 අඩු අවදානම (කැලෑ සීමාවේ)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">ගමන් කරන දිශාව</label>
-          <select id="direction" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white">
-            <option value="ගම දෙසට">ගම දෙසට</option>
-            <option value="කැලෑව දෙසට">කැලෑව දෙසට</option>
-            <option value="වැව දෙසට">වැව දෙසට</option>
-            <option value="නොදනී">නොදනී / ස්ථාවරයි</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">ස්ථානයේ නම / විස්තරය</label>
-          <input type="text" id="locationNotes" placeholder="උදා: මහ වැව අලංකාර ඉඩම අසල" required class="w-full p-2.5 border border-gray-300 rounded-lg">
-        </div>
-
-        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-md transition">
-          සිතියමට එක් කරන්න
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- JavaScript Logic -->
-  <script>
-    let map, userMarker;
-    let currentUserPos = [8.3114, 80.4037]; // Default: Anuradhapura coordinates
-    let currentUsername = "";
-    let sightingMarkers = [];
-
-    // LocalStorage keys
-    const STORAGE_KEY_USER = "elephant_watch_username";
-    const STORAGE_KEY_REPORTS = "elephant_watch_reports";
-
-    // ----------------------------------------------------
-    // 1. App Initialisation
-    // ----------------------------------------------------
-    window.addEventListener("DOMContentLoaded", () => {
-      checkUsernameLocalStorage();
-      initMap();
-      loadReportsFromLocalStorage();
-    });
-
-    // ----------------------------------------------------
-    // 2. Phone-Specific LocalStorage Username Logic
-    // ----------------------------------------------------
-    function checkUsernameLocalStorage() {
-      const savedName = localStorage.getItem(STORAGE_KEY_USER);
-
-      if (savedName && savedName.trim() !== "") {
-        currentUsername = savedName;
-        document.getElementById("headerUsername").textContent = currentUsername;
-        document.getElementById("usernameModal").classList.add("hidden");
-      } else {
-        // පළමු වතාවට මෙම ෆෝන් එකෙන් එන විට පමණක් Modal එක පෙන්වන්න
-        document.getElementById("usernameModal").classList.remove("hidden");
-      }
-    }
-
-    // Save Username button click
-    document.getElementById("saveUsernameBtn").addEventListener("click", () => {
-      const inputVal = document.getElementById("usernameInput").value.trim();
-
-      if (inputVal.length >= 2) {
-        localStorage.setItem(STORAGE_KEY_USER, inputVal);
-        currentUsername = inputVal;
-        document.getElementById("headerUsername").textContent = currentUsername;
-        document.getElementById("usernameModal").classList.add("hidden");
-      } else {
-        alert("කරුණාකර අවම වශයෙන් අකුරු 2 කින් යුත් නමක් ඇතුළත් කරන්න!");
-      }
-    });
-
-    // වෙනස් කරන්න Button Click (Manual Reset)
-    function resetUsername() {
-      if (confirm("ඔබගේ නම වෙනස් කිරීමට අවශ්‍යද?")) {
-        localStorage.removeItem(STORAGE_KEY_USER);
-        document.getElementById("usernameInput").value = currentUsername;
-        document.getElementById("usernameModal").classList.remove("hidden");
-      }
-    }
-
-    // ----------------------------------------------------
-    // 3. Map Engine Setup (Leaflet + Esri Satellite)
-    // ----------------------------------------------------
-    function initMap() {
-      // Esri Satellite Layer
-      const satelliteTile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri'
-      });
-
-      map = L.map('map', {
-        center: currentUserPos,
-        zoom: 13,
-        layers: [satelliteTile]
-      });
-
-      // Get user's actual GPS location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            currentUserPos = [pos.coords.latitude, pos.coords.longitude];
-            map.setView(currentUserPos, 14);
-
-            // User location blue pin
-            userMarker = L.circleMarker(currentUserPos, {
-              radius: 8,
-              fillColor: "#3b82f6",
-              color: "#ffffff",
-              weight: 3,
-              opacity: 1,
-              fillOpacity: 0.9
-            }).addTo(map).bindPopup("<b>ඔබ සිටින ස්ථානය</b>");
-          },
-          (err) => {
-            console.log("GPS Location Access Denied or Unavailable");
-          }
-        );
-      }
-    }
-
-    // ----------------------------------------------------
-    // 4. Modal Handlers
-    // ----------------------------------------------------
-    const reportModal = document.getElementById("reportModal");
-    document.getElementById("openReportModalBtn").addEventListener("click", () => {
-      reportModal.classList.remove("hidden");
-    });
-    document.getElementById("closeReportModalBtn").addEventListener("click", () => {
-      reportModal.classList.add("hidden");
-    });
-
-    // ----------------------------------------------------
-    // 5. Add New Sighting Report
-    // ----------------------------------------------------
-    document.getElementById("sightingForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-
-      const count = document.getElementById("elephantCount").value;
-      const risk = document.getElementById("riskLevel").value;
-      const dir = document.getElementById("direction").value;
-      const notes = document.getElementById("locationNotes").value;
-
-      // නව වාර්තාවේ Object එක
-      const newReport = {
-        id: Date.now(),
-        user: currentUsername || "නොදන්නා පරිශීලකයෙක්",
-        count: count,
-        risk: risk,
-        direction: dir,
-        notes: notes,
-        lat: currentUserPos[0] + (Math.random() - 0.5) * 0.008, // පොඩි Random offset එකක් (Demo සඳහා)
-        lng: currentUserPos[1] + (Math.random() - 0.5) * 0.008,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      // LocalStorage එකට එකතු කිරීම
-      let currentReports = JSON.parse(localStorage.getItem(STORAGE_KEY_REPORTS) || "[]");
-      currentReports.unshift(newReport);
-      localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(currentReports));
-
-      // සිතියමට එක් කරන්න
-      addMarkerToMap(newReport);
-
-      // High Risk නම් Sound Alarm එකක් වාදනය කිරීම
-      if (risk === "HIGH") {
-        playSirenSound();
-        alert("🚨 අවධානයට: ඉහළ අවදානම් සහිත අලි වාර්තාවක් සිතියමට එක් විය!");
-      }
-
-      // Modal එක වසා දැමීම
-      reportModal.classList.add("hidden");
-      document.getElementById("sightingForm").reset();
-    });
-
-    // ----------------------------------------------------
-    // 6. Marker rendering on Map
-    // ----------------------------------------------------
-    function addMarkerToMap(report) {
-      const color = report.risk === "HIGH" ? "red" : (report.risk === "MEDIUM" ? "orange" : "green");
-
-      const customIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style="background-color:${color}; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-center:center; color:white; border:2px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.3); font-size:16px;">🐘</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
-
-      const popupContent = `
-        <div class="text-gray-800 p-1">
-          <h4 class="font-bold text-sm text-red-600 mb-1">🐘 අලින් ${report.count} දෙනෙකු දැක ඇත</h4>
-          <p class="text-xs mb-1"><b>ස්ථානය:</b> ${report.notes}</p>
-          <p class="text-xs mb-1"><b>ගමන් මඟ:</b> ${report.direction}</p>
-          <p class="text-xs mb-1"><b>වාර්තා කළේ:</b> <span class="text-green-700 font-semibold">${report.user}</span></p>
-          <p class="text-[10px] text-gray-500">වේලාව: ${report.time}</p>
-        </div>
-      `;
-
-      const marker = L.marker([report.lat, report.lng], { icon: customIcon })
-        .addTo(map)
-        .bindPopup(popupContent);
-
-      sightingMarkers.push(marker);
-    }
-
-    function loadReportsFromLocalStorage() {
-      const currentReports = JSON.parse(localStorage.getItem(STORAGE_KEY_REPORTS) || "[]");
-      currentReports.forEach(r => addMarkerToMap(r));
-    }
-
-    // ----------------------------------------------------
-    // 7. Web Audio API Siren Sound for High Risk
-    // ----------------------------------------------------
-    function playSirenSound() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.5);
-
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start();
-        osc.stop(ඔබ ඉල්ලූ පරිදි, එකම ෆෝන් එකෙන් නැවත නැවත ලොග් වෙද්දී Username එක නොඉල්ලන **LocalStorage Logic** එක ඇතුළත් කළ සම්පූර්ණ `index.html` කේතය පහත දැක්වේ.
-
-මෙය කොපි කර `index.html` ලෙස Save කර භාවිතා කළ හැක.
-
-```html
-<!DOCTYPE html>
-<html lang="si">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ගමේ අලි මුරපද්ධතිය - Elephant Watch</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-  
-  <!-- Leaflet Map CSS & JS -->
-  <link rel="stylesheet" href="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.css](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)" />
-  <script src="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.js](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
-  
-  <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
-  
-  <!-- Google Noto Sans Sinhala Font -->
-  <link href="[https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap](https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap)" rel="stylesheet">
-  
-  <style>
-    body { font-family: 'Noto Sans Sinhala', sans-serif; }
-    #map { height: calc(100vh - 64px); width: 100%; }
-  </style>
-</head>
-<body class="bg-gray-100 flex flex-col h-screen overflow-hidden">
-
-  <!-- Header Section -->
-  <header class="bg-emerald-800 text-white h-16 px-4 flex items-center justify-between shadow-lg z-10">
-    <div class="flex items-center space-x-2">
-      <span class="text-2xl">🐘</span>
-      <h1 class="text-lg font-bold">ගමේ අලි මුරපද්ධතිය</h1>
-    </div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ගමේ අලි මුරපද්ධතිය (Elephant Watch)</title>
     
-    <!-- User Badge (Displays logged-in username) -->
-    <div id="userBadge" class="text-xs bg-emerald-900 px-3 py-1.5 rounded-full flex items-center gap-2 border border-emerald-600 hidden">
-      <i class="fa-solid fa-user text-emerald-300"></i>
-      <span id="displayUsername" class="font-semibold text-emerald-100"></span>
-      <button onclick="changeUsername()" class="text-xs text-emerald-400 hover:text-white underline ml-1">වෙනස් කරන්න</button>
-    </div>
-  </header>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Noto Sans Sinhala"', 'sans-serif'] },
+                    colors: { brand: { 500: '#22c55e', 600: '#16a34a', 700: '#15803d' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; touch-action: none; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 10; }
+        
+        .ui-layer { position: absolute; z-index: 40; pointer-events: none; }
+        .pointer-events-auto { pointer-events: auto; }
+        
+        /* Live location blue dot animation */
+        .live-location-dot {
+            width: 18px; height: 18px; background-color: #3b82f6;
+            border-radius: 50%; border: 3px solid white;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); position: relative;
+        }
+        .live-location-dot::after {
+            content: ""; position: absolute; top: -12px; left: -12px; right: -12px; bottom: -12px;
+            border-radius: 50%; border: 2px solid rgba(59, 130, 246, 0.5);
+            animation: ripple 2s infinite ease-out;
+        }
+        @keyframes ripple {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
 
-  <!-- Main Map Container -->
-  <main class="relative flex-1">
+        .temp-marker {
+            color: #ef4444; font-size: 42px;
+            animation: bounce 0.5s infinite alternate; text-shadow: 0 4px 6px rgba(0,0,0,0.6);
+        }
+        @keyframes bounce {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-12px) scale(1.1); }
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .leaflet-popup-content-wrapper { border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); padding: 0; overflow: hidden; }
+        .leaflet-popup-content { margin: 0; width: 220px !important; }
+        .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+
+        /* Bottom Sheet Collapsed State */
+        .sheet-collapsed {
+            transform: translateY(calc(100% - 56px)) !important;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800 font-sans h-screen w-screen flex flex-col">
+
     <div id="map"></div>
 
-    <!-- Floating Action Button to Report -->
-    <button id="openReportBtn" onclick="openReportModal()" class="fixed bottom-6 right-6 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded-full shadow-2xl flex items-center gap-2 text-base z-[400] transition transform active:scale-95">
-      <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-      <span>අලියෙකු වාර්තා කරන්න</span>
-    </button>
-  </main>
+    <div class="ui-layer top-0 left-0 right-0 p-3 sm:p-4 flex flex-col gap-3">
+        <!-- Header -->
+        <header class="pointer-events-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 flex justify-between items-center border border-white/50">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-br from-green-500 to-green-700 text-white p-2 rounded-xl w-12 h-12 flex items-center justify-center shadow-inner">
+                    <i class="fa-solid fa-elephant text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight text-gray-900">අලි මුරපද්ධතිය</h1>
+                    <p class="text-[11px] text-gray-600 font-bold uppercase tracking-wide flex items-center gap-1.5 mt-0.5">
+                        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span> සජීවී සිතියම
+                    </p>
+                </div>
+            </div>
+            <button id="btnCenterMap" class="bg-blue-50 text-blue-600 w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-blue-100 transition shadow-sm border border-blue-100 active:scale-95">
+                <i class="fa-solid fa-location-crosshairs text-xl"></i>
+            </button>
+        </header>
 
-  <!-- 1. FIRST TIME USERNAME LOGIN MODAL (Device-specific LocalStorage) -->
-  <div id="usernameModal" class="fixed inset-0 bg-black/75 flex items-center justify-center z-[2000] hidden backdrop-blur-sm">
-    <div class="bg-white p-6 rounded-2xl max-w-sm w-full mx-4 text-center shadow-2xl border border-gray-100">
-      <div class="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center text-3xl mx-auto mb-3">
-        🐘
-      </div>
-      <h2 class="text-xl font-bold text-gray-800 mb-1">සාදරයෙන් පිළිගනිමු!</h2>
-      <p class="text-xs text-gray-600 mb-4">අලි මුරපද්ධතිය භාවිතයට ප්‍රථම ඔබගේ නම ඇතුළත් කරන්න. (මෙය මෙම දුරකථනයේ නැවත අසනු නොලැබේ)</p>
-      
-      <input type="text" id="usernameInput" class="w-full p-3 border border-gray-300 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center font-semibold text-gray-800 placeholder-gray-400" placeholder="ඔබගේ නම (උදා: සුනිමල්)">
-      
-      <button id="saveUsernameBtn" onclick="saveUsername()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition duration-200">
-        ඇතුළු වන්න
-      </button>
+        <!-- Dynamic Alert Banner -->
+        <div id="alertBanner" class="hidden pointer-events-auto bg-gradient-to-r from-red-600 to-red-700 backdrop-blur text-white p-4 rounded-2xl shadow-[0_10px_30px_rgba(220,38,38,0.5)] border border-red-400 transition-all duration-500 transform -translate-y-4 opacity-0 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="bg-white text-red-600 p-3 rounded-full flex items-center justify-center animate-bounce shadow-inner">
+                    <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                </div>
+                <div>
+                    <strong class="block text-lg font-bold drop-shadow-md">අනතුරු ඇඟවීමයි!</strong>
+                    <span id="alertMessage" class="text-sm font-medium text-red-50">...</span>
+                </div>
+            </div>
+            <button onclick="hideAlert()" class="p-2 opacity-80 hover:opacity-100 bg-black/20 rounded-full w-10 h-10 flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
     </div>
-  </div>
 
-  <!-- 2. ELEPHANT REPORT MODAL -->
-  <div id="reportModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] hidden p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl overflow-y-auto max-h-[90vh]">
-      <div class="flex justify-between items-center mb-4 border-b pb-2">
-        <h3 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-bullhorn text-red-600 mr-2"></i>නව අලි දර්ශනයක් වාර්තා කරන්න</h3>
-        <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-
-      <form id="reportForm" onsubmit="submitReport(event)" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-gray-700 mb-1">අලින් සංඛ්‍යාව</label>
-          <input type="number" id="elephantCount" min="1" value="1" required class="w-full p-2.5 border border-gray-300 rounded-lg text-sm">
+    <div class="ui-layer bottom-0 left-0 right-0 flex flex-col pointer-events-none pb-safe">
+        
+        <!-- Floating Action Button -->
+        <div class="flex justify-end px-5 mb-5 pointer-events-none">
+            <button id="btnReportCurrent" class="pointer-events-auto bg-gradient-to-r from-red-500 to-red-600 text-white w-16 h-16 rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.6)] flex items-center justify-center text-2xl hover:scale-105 active:scale-95 transition-transform border-[3px] border-white" title="මගේ ස්ථානයෙන් වාර්තා කරන්න">
+                <i class="fa-solid fa-bullseye"></i>
+            </button>
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-gray-700 mb-1">අවදානම් මට්ටම</label>
-          <select id="riskLevel" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white">
-            <option value="high">🔴 ඉහළ (ගමට ඉතා ආසන්නයි)</option>
-            <option value="medium" selected>🟡 මධ්‍යම (වගා බිම් ආසන්නයේ)</option>
-            <option value="low">🟢 අඩු (කැලෑ මායිමේ)</option>
-          </select>
+        <!-- Recent Reports Bottom Sheet (Collapsible) -->
+        <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col h-[35vh] min-h-[250px] max-h-[400px] transition-transform duration-300 ease-in-out transform translate-y-0">
+            <div class="w-full pt-3 pb-1 cursor-pointer select-none" onclick="toggleBottomSheet()">
+                <div class="w-14 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
+            </div>
+            <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="toggleBottomSheet()">
+                    <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
+                </h2>
+                <div class="flex items-center gap-2">
+                    <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
+                    <button onclick="toggleBottomSheet()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="පහළට / ඉහළට">
+                        <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Report List -->
+            <div id="reportsListContainer" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 pb-6">
+                <div class="flex flex-col items-center justify-center h-full text-gray-400">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-green-500"></i>
+                    <span class="text-sm font-medium text-gray-500">දත්ත ලබාගනිමින්...</span>
+                </div>
+            </div>
         </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-gray-700 mb-1">ගමන් කරන දිශාව</label>
-          <select id="direction" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white">
-            <option value="ගම දෙසට">ගම දෙසට</option>
-            <option value="කැලෑව දෙසට">කැලෑව දෙසට</option>
-            <option value="වැව දෙසට">වැව දෙසට</option>
-            <option value="නොදනී">නොදනී</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-gray-700 mb-1">ස්ථානය / විස්තර</label>
-          <textarea id="locationNotes" rows="2" placeholder="උදා: වෙල් යාය අසල, ප්‍රධාන පාරට මීටර් 100යි" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm"></textarea>
-        </div>
-
-        <div class="pt-2 flex gap-3">
-          <button type="button" onclick="closeReportModal()" class="w-1/2 py-2.5 bg-gray-200 text-gray-700 font-semibold rounded-lg text-sm">අවලංගු කරන්න</button>
-          <button type="submit" class="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-sm shadow">වාර්තා කරන්න</button>
-        </div>
-      </form>
     </div>
-  </div>
 
-  <script>
-    // Global Variables
-    let map, userMarker;
-    let currentUsername = "";
-    let userLocation = { lat: 7.8731, lng: 80.7718 }; // Default Sri Lanka coordinates
+    <!-- Report Modal -->
+    <div id="reportModal" class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
+        <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
+        
+        <div class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[90vh] flex flex-col transform transition-transform translate-y-0">
+            
+            <!-- Modal Header -->
+            <div class="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
+                <div>
+                    <h3 id="modalTitle" class="text-xl font-bold text-gray-900">නව වාර්තාවක්</h3>
+                    <p class="text-xs text-gray-500 font-medium mt-1"><i class="fa-regular fa-calendar-check mr-1"></i> <span id="modalDateTime"></span></p>
+                </div>
+                <button onclick="closeModal('reportModal')" class="w-9 h-9 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
 
-    // 1. Initial Page Load Execution
-    window.addEventListener('DOMContentLoaded', () => {
-      checkUsername();
-      initMap();
-    });
+            <!-- Modal Body (Form) -->
+            <div class="p-5 sm:p-6 overflow-y-auto custom-scroll flex-1">
+                <form id="elephantForm" class="space-y-5">
+                    <input type="hidden" id="formId">
+                    <input type="hidden" id="formLat">
+                    <input type="hidden" id="formLng">
+                    <input type="hidden" id="formImageBase64">
 
-    // Check LocalStorage for saved Username
-    function checkUsername() {
-      const savedName = localStorage.getItem('elephant_watch_username');
-      if (savedName && savedName.trim() !== '') {
-        // තිබේ නම් direct ඇතුළු වන්න (Modal එක පෙන්වන්නේ නැත)
-        currentUsername = savedName;
-        document.getElementById('displayUsername').innerText = currentUsername;
-        document.getElementById('userBadge').classList.remove('hidden');
-        document.getElementById('usernameModal').classList.add('hidden');
-      } else {
-        // මෙම ඩිවයිස් එකේ නමක් නැත්නම් පමණක් Modal එක පෙන්වන්න
-        document.getElementById('usernameModal').classList.remove('hidden');
-      }
-    }
+                    <!-- Location Name -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-map-pin text-green-600 w-5"></i> ස්ථානයේ නම / විස්තරය</label>
+                        <input type="text" id="formLocation" required placeholder="උදා: වැව් ඉවුර, 14 යාය..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 transition text-sm font-medium">
+                    </div>
 
-    // Save Username into Browser's LocalStorage
-    function saveUsername() {
-      const nameInput = document.getElementById('usernameInput').value.trim();
-      if (nameInput !== '') {
-        localStorage.setItem('elephant_watch_username', nameInput);
-        currentUsername = nameInput;
-        document.getElementById('displayUsername').innerText = currentUsername;
-        document.getElementById('userBadge').classList.remove('hidden');
-        document.getElementById('usernameModal').classList.add('hidden');
-      } else {
-        alert('කරුණාකර නිවැරදි නමක් ඇතුළත් කරන්න!');
-      }
-    }
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Count -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-list-ol text-green-600 w-5"></i> අලි ගණන</label>
+                            <input type="number" id="formCount" required min="1" value="1" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-center font-bold text-lg bg-gray-50 transition">
+                        </div>
+                        <!-- Direction -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-compass text-green-600 w-5"></i> දිශාව (විකල්ප)</label>
+                            <input type="text" id="formDirection" placeholder="ගම දෙසට" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition text-sm font-medium">
+                        </div>
+                    </div>
 
-    // Allow user to change name later if needed
-    function changeUsername() {
-      const newName = prompt('ඔබගේ අලුත් නම ඇතුළත් කරන්න:', currentUsername);
-      if (newName && newName.trim() !== '') {
-        localStorage.setItem('elephant_watch_username', newName.trim());
-        currentUsername = newName.trim();
-        document.getElementById('displayUsername').innerText = currentUsername;
-      }
-    }
+                    <!-- Image Upload Section -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-camera text-green-600 w-5"></i> ඡායාරූපයක් (විකල්ප)</label>
+                        <div class="relative w-full h-36 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group cursor-pointer" onclick="openImageSourceModal()">
+                            
+                            <div id="uploadPrompt" class="text-center transition-opacity">
+                                <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-2 group-hover:text-green-500 transition-colors"></i>
+                                <p class="text-xs text-gray-600 font-bold">ඡායාරූපයක් තෝරන්න</p>
+                            </div>
+                            
+                            <img id="imagePreview" src="" class="absolute inset-0 w-full h-full object-cover hidden" alt="Preview">
+                            
+                            <div id="imageOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity hidden">
+                                <span class="text-white text-sm font-bold bg-black/60 px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm"><i class="fa-solid fa-pen mr-2"></i>වෙනස් කරන්න</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden Camera & Gallery Inputs -->
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="processImage(event)">
+                        <input type="file" id="galleryInput" accept="image/*" class="hidden" onchange="processImage(event)">
+                        
+                        <div class="flex justify-end mt-2">
+                            <button type="button" id="btnRemoveImg" class="hidden text-xs text-red-500 font-bold hover:bg-red-50 px-2 py-1 rounded transition" onclick="removeImage()">
+                                <i class="fa-solid fa-trash mr-1"></i>ඉවත් කරන්න
+                            </button>
+                        </div>
+                    </div>
 
-    // 2. Leaflet Map Setup
-    function initMap() {
-      map = L.map('map').setView([userLocation.lat, userLocation.lng], 13);
+                    <!-- Risk Level Selection -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-triangle-exclamation text-green-600 w-5"></i> අවදානම් මට්ටම</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="riskLvl" value="high" class="peer sr-only" checked>
+                                <div class="text-center py-2.5 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 font-bold shadow-sm transition-all text-sm">
+                                    <i class="fa-solid fa-radiation mr-1"></i> ඉහළ
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="riskLvl" value="medium" class="peer sr-only">
+                                <div class="text-center py-2.5 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 font-bold shadow-sm transition-all text-sm">
+                                    <i class="fa-solid fa-circle-exclamation mr-1"></i> මධ්‍යම
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="riskLvl" value="low" class="peer sr-only">
+                                <div class="text-center py-2.5 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-green-50 peer-checked:border-green-500 peer-checked:text-green-700 font-bold shadow-sm transition-all text-sm">
+                                    <i class="fa-solid fa-shield-halved mr-1"></i> අඩු
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
-      // Esri Satellite Map Tiles
-      L.tileLayer('[https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/){z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri'
-      }).addTo(map);
+            <!-- Modal Footer -->
+            <div class="p-5 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
+                <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3.5 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition">අවලංගුයි</button>
+                <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3.5 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-      // Get User's Live Location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            userLocation = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
+    <!-- Image Source Selection Modal (Camera vs Gallery) -->
+    <div id="imageSourceModal" class="hidden fixed inset-0 z-[160] flex items-end sm:items-center justify-center pointer-events-auto bg-gray-900/70 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center border border-gray-100">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">ඡායාරූපය ලබාගන්නා ආකාරය</h3>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button type="button" onclick="openCamera()" class="p-4 rounded-2xl bg-green-50 border-2 border-green-200 hover:bg-green-100 text-green-700 font-bold flex flex-col items-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-camera text-3xl"></i>
+                    <span class="text-xs">කැමරාවෙන්</span>
+                </button>
+                <button type="button" onclick="openGallery()" class="p-4 rounded-2xl bg-blue-50 border-2 border-blue-200 hover:bg-blue-100 text-blue-700 font-bold flex flex-col items-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-images text-3xl"></i>
+                    <span class="text-xs">ගැලරියෙන්</span>
+                </button>
+            </div>
+            <button type="button" onclick="closeModal('imageSourceModal')" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition text-sm">අවලංගුයි</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center pointer-events-auto backdrop-blur-sm bg-gray-900/70 px-4 transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 border-4 border-white shadow-lg">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">වාර්තාව මකන්නද?</h3>
+            <p class="text-sm text-gray-500 mb-6 font-medium">මෙම දත්ත පද්ධතියෙන් සම්පූර්ණයෙන්ම ඉවත් කෙරෙනු ඇත.</p>
+            <div class="flex gap-3">
+                <button onclick="closeModal('deleteModal')" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition">නැහැ</button>
+                <button id="confirmDeleteBtn" class="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-600/30 active:scale-95 transition">ඔව්, මකන්න</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
+
+    <!-- Firebase SDK v12 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
+            authDomain: "elipent-4e589.firebaseapp.com",
+            projectId: "elipent-4e589",
+            storageBucket: "elipent-4e589.firebasestorage.app",
+            messagingSenderId: "363464948428",
+            appId: "1:363464948428:web:e23f81df54b13003eee069",
+            measurementId: "G-8D4RDL6G4F"
+        };
+
+        let app, db, currentUser = { uid: "web-user" };
+        let map, userMarker, tempMarker;
+        let reportsData = [];
+        let mapMarkers = {}; 
+        let targetDeleteId = null;
+
+        // Bottom Sheet Toggle Functionality
+        window.toggleBottomSheet = () => {
+            const sheet = document.getElementById('bottomSheet');
+            const icon = document.getElementById('sheetToggleIcon');
+            const isCollapsed = sheet.classList.contains('sheet-collapsed');
+            
+            if (isCollapsed) {
+                sheet.classList.remove('sheet-collapsed');
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            } else {
+                sheet.classList.add('sheet-collapsed');
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            }
+        };
+
+        // Modal for Image Source Selection
+        window.openImageSourceModal = () => {
+            document.getElementById('imageSourceModal').classList.remove('hidden');
+        };
+
+        window.openCamera = () => {
+            closeModal('imageSourceModal');
+            document.getElementById('cameraInput').click();
+        };
+
+        window.openGallery = () => {
+            closeModal('imageSourceModal');
+            document.getElementById('galleryInput').click();
+        };
+
+        window.showToast = (msg, type = 'success') => {
+            const toast = document.createElement('div');
+            const style = type === 'success' ? 'bg-gray-900 text-white border-green-500' : 'bg-red-600 text-white border-white';
+            const icon = type === 'success' ? 'fa-circle-check text-green-400' : 'fa-triangle-exclamation text-white';
+            
+            toast.className = `${style} px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold transform transition-all duration-300 -translate-y-10 opacity-0 flex items-center gap-3 border-l-4 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-xl"></i> <span>${msg}</span>`;
+            
+            document.getElementById('toastArea').appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('-translate-y-10', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('-translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        };
+
+        const playAlertSiren = () => {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sawtooth';
+                const now = ctx.currentTime;
+                osc.frequency.setValueAtTime(700, now);
+                osc.frequency.linearRampToValueAtTime(1100, now + 0.4);
+                osc.frequency.linearRampToValueAtTime(700, now + 0.8);
+                osc.frequency.linearRampToValueAtTime(1100, now + 1.2);
+                osc.frequency.linearRampToValueAtTime(700, now + 1.6);
+                
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.5, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0.5, now + 1.8);
+                gain.gain.linearRampToValueAtTime(0, now + 2.0);
+                
+                osc.start(now); osc.stop(now + 2.0);
+            } catch (e) { console.log("Audio not supported."); }
+        };
+
+        function initializeMap() {
+            map = L.map('map', { zoomControl: false }).setView([7.8731, 80.7718], 8);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Satellite Layer (Esri)
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19, attribution: 'Esri'
+            }).addTo(map);
+
+            // Place Names Overlay (CartoDB)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+                subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane'
+            }).addTo(map);
+
+            map.on('click', (e) => {
+                if(tempMarker) map.removeLayer(tempMarker);
+                const icon = L.divIcon({
+                    className: '', 
+                    html: `<div class="temp-marker" style="background:#22c55e; color:white; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.4); border:3px solid white;"><i class="fa-solid fa-elephant text-xl"></i></div>`,
+                    iconSize: [45, 45], 
+                    iconAnchor: [22, 22]
+                });
+                tempMarker = L.marker(e.latlng, { icon, zIndexOffset: 2000 }).addTo(map);
+                map.flyTo(e.latlng, 15, { duration: 0.5 });
+                setTimeout(() => openReportModal(null, e.latlng.lat, e.latlng.lng), 400);
+            });
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(pos => {
+                    const { latitude, longitude } = pos.coords;
+                    if (!userMarker) {
+                        const icon = L.divIcon({ className: '', html: '<div class="live-location-dot"></div>', iconSize:[18,18], iconAnchor:[9,9]});
+                        userMarker = L.marker([latitude, longitude], { icon, zIndexOffset: 1000 }).addTo(map);
+                        map.setView([latitude, longitude], 15);
+                    } else {
+                        userMarker.setLatLng([latitude, longitude]);
+                    }
+                }, err => { console.warn("Location error:", err); }, { enableHighAccuracy: true });
+            }
+
+            document.getElementById('btnCenterMap').addEventListener('click', () => {
+                if(userMarker) map.flyTo(userMarker.getLatLng(), 16);
+                else showToast("ස්ථානය ලබා ගනිමින් පවතී. කරුණාකර Location on කරන්න.", "error");
+            });
+
+            document.getElementById('btnReportCurrent').addEventListener('click', () => {
+                if(userMarker) {
+                    const pos = userMarker.getLatLng();
+                    openReportModal(null, pos.lat, pos.lng);
+                } else {
+                    showToast("පළමුව සිතියමේ ස්ථානයක් click කරන්න.", "error");
+                }
+            });
+        }
+
+        async function connectFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+
+                const reportsRef = collection(db, 'reports');
+                let isFirstLoad = true;
+
+                onSnapshot(query(reportsRef), (snapshot) => {
+                    let temp = [];
+                    const currentTime = Date.now();
+                    const thirtyMinutes = 30 * 60 * 1000;
+
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        if (!data.timestamp || (currentTime - data.timestamp < thirtyMinutes)) {
+                            temp.push({ id: docSnap.id, ...data });
+                        }
+                    });
+
+                    reportsData = temp.sort((a, b) => b.timestamp - a.timestamp);
+
+                    if (!isFirstLoad) {
+                        snapshot.docChanges().forEach(change => {
+                            if (change.type === 'added' && change.doc.data().risk === 'high') {
+                                playAlertSiren();
+                                triggerVisualAlert(change.doc.data());
+                            }
+                        });
+                    }
+                    isFirstLoad = false;
+                    refreshDataUI();
+                }, (error) => {
+                    console.error("Firestore error:", error);
+                    showToast("දත්ත ලබා ගැනීමේ දෝෂයකි.", "error");
+                });
+            } catch (err) {
+                console.error("Setup error:", err);
+                showToast("පද්ධති දෝෂයකි. පිටුව රිෆ්‍රෙෂ් කරන්න.", "error");
+            }
+        }
+
+        const getRiskTheme = (level) => {
+            if(level === 'high') return { color: '#ef4444', class: 'bg-red-50 border-red-200 text-red-700', label: 'ඉහළ අවදානම්', icon: 'fa-radiation' };
+            if(level === 'medium') return { color: '#f97316', class: 'bg-orange-50 border-orange-200 text-orange-700', label: 'මධ්‍යම අවදානම්', icon: 'fa-circle-exclamation' };
+            return { color: '#22c55e', class: 'bg-green-50 border-green-200 text-green-700', label: 'අඩු අවදානම්', icon: 'fa-shield-halved' };
+        };
+
+        window.triggerVisualAlert = (data) => {
+            const banner = document.getElementById('alertBanner');
+            document.getElementById('alertMessage').innerText = `${data.location} හි අලි ${data.count}ක් දැක ඇත!`;
+            banner.classList.remove('hidden');
+            setTimeout(() => banner.classList.remove('-translate-y-4', 'opacity-0'), 10);
+            setTimeout(hideAlert, 15000);
+        };
+
+        window.hideAlert = () => {
+            const banner = document.getElementById('alertBanner');
+            banner.classList.add('-translate-y-4', 'opacity-0');
+            setTimeout(() => banner.classList.add('hidden'), 500);
+        };
+
+        function renderEmptyState(msg = "මෑත කාලීන වාර්තා නොමැත.") {
+            document.getElementById('reportsListContainer').innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-gray-400 py-10">
+                    <i class="fa-solid fa-folder-open text-5xl mb-4 opacity-40"></i>
+                    <span class="text-sm font-bold text-gray-500">${msg}</span>
+                </div>`;
+        }
+
+        function refreshDataUI() {
+            document.getElementById('reportCountBadge').innerText = reportsData.length;
+            const activeIds = reportsData.map(r => r.id);
+            Object.keys(mapMarkers).forEach(id => {
+                if (!activeIds.includes(id)) { map.removeLayer(mapMarkers[id]); delete mapMarkers[id]; }
+            });
+
+            if (reportsData.length === 0) { renderEmptyState(); } 
+            else {
+                let html = '';
+                reportsData.forEach(item => {
+                    const theme = getRiskTheme(item.risk);
+                    const dt = item.timestamp ? new Date(item.timestamp).toLocaleString('si-LK', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+                    const safeJson = encodeURIComponent(JSON.stringify(item));
+                    const imgHtml = item.imgData ? `<div class="mt-2 rounded-xl overflow-hidden shadow-sm"><img src="${item.imgData}" class="w-full h-32 object-cover"></div>` : '';
+                    
+                    const popupHtml = `
+                        <div class="p-3">
+                            <div class="flex gap-2 items-start mb-2">
+                                <div class="w-3 h-3 rounded-full mt-1.5 shrink-0" style="background:${theme.color}; box-shadow: 0 0 8px ${theme.color}"></div>
+                                <div>
+                                    <h4 class="font-bold text-gray-900 leading-tight m-0 text-sm">${item.location}</h4>
+                                    <span class="text-[10px] text-gray-500 font-bold">${dt}</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-2.5 mb-2 border border-gray-100">
+                                <div class="flex justify-between items-center text-xs text-gray-700 mb-1">
+                                    <span><i class="fa-solid fa-elephant w-4"></i> අලි ගණන</span> <b>${item.count}</b>
+                                </div>
+                                ${item.direction ? `<div class="flex justify-between items-center text-xs text-gray-700">
+                                    <span><i class="fa-solid fa-compass w-4"></i> දිශාව</span> <b>${item.direction}</b>
+                                </div>` : ''}
+                            </div>
+                            ${imgHtml}
+                            <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                                <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-lg font-bold hover:bg-blue-100"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
+                                <button onclick="triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-lg font-bold hover:bg-red-100"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
+                            </div>
+                        </div>`;
+
+                    if (mapMarkers[item.id]) {
+                        mapMarkers[item.id].setLatLng([item.lat, item.lng]);
+                        mapMarkers[item.id].getPopup().setContent(popupHtml);
+                    } else {
+                        const markerHtml = `
+                            <div class="relative flex items-center justify-center w-12 h-12">
+                                <div class="absolute inset-0 rounded-full opacity-50 animate-ping" style="background:${theme.color}"></div>
+                                <div class="relative z-10 w-8 h-8 rounded-full border-[3px] border-white shadow-xl flex items-center justify-center text-white text-[14px]" style="background:${theme.color}">
+                                    <i class="fa-solid fa-elephant"></i>
+                                </div>
+                            </div>`;
+                        const customIcon = L.divIcon({ className:'', html: markerHtml, iconSize: [48,48], iconAnchor: [24,24], popupAnchor: [0, -20] });
+                        mapMarkers[item.id] = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map).bindPopup(popupHtml);
+                    }
+
+                    const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
+                    
+                    html += `
+                    <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
+                        <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
+                        <div class="pl-2 shrink-0">${thumb}</div>
+                        <div class="flex-1 py-0.5">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}"><i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}</span>
+                                <span class="text-[10px] text-gray-400 font-bold">${dt}</span>
+                            </div>
+                            <h4 class="font-bold text-gray-800 text-sm leading-tight">${item.location}</h4>
+                            <p class="text-[11px] text-gray-500 font-bold mt-1"><i class="fa-solid fa-elephant text-gray-400 mr-1"></i> අලි ${item.count}</p>
+                        </div>
+                        <div class="flex flex-col gap-2 shrink-0">
+                            <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition border border-gray-100"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:text-red-600 hover:bg-red-50 transition border border-gray-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('reportsListContainer').innerHTML = html;
+            }
+        }
+
+        window.flyAndOpen = (id, lat, lng) => {
+            map.flyTo([lat, lng], 17, { duration: 1 });
+            setTimeout(() => { if(mapMarkers[id]) mapMarkers[id].openPopup(); }, 1100);
+        };
+
+        window.openReportModal = (dataStr = null, lat = null, lng = null) => {
+            const form = document.getElementById('elephantForm');
+            form.reset(); removeImage();
+            const dtStr = new Date().toLocaleString('si-LK', { dateStyle: 'full', timeStyle: 'short' });
+            document.getElementById('modalDateTime').innerText = dtStr;
+
+            if (dataStr) {
+                const data = JSON.parse(decodeURIComponent(dataStr));
+                document.getElementById('modalTitle').innerText = "වාර්තාව වෙනස් කරන්න";
+                document.getElementById('submitLabel').innerText = "යාවත්කාලීන කරන්න";
+                document.getElementById('formId').value = data.id;
+                document.getElementById('formLat').value = data.lat;
+                document.getElementById('formLng').value = data.lng;
+                document.getElementById('formLocation').value = data.location;
+                document.getElementById('formCount').value = data.count;
+                document.getElementById('formDirection').value = data.direction || '';
+                document.querySelector(`input[name="riskLvl"][value="${data.risk}"]`).checked = true;
+                if (data.imgData) showImagePreview(data.imgData);
+            } else {
+                document.getElementById('modalTitle').innerText = "නව වාර්තාවක්";
+                document.getElementById('submitLabel').innerText = "වාර්තා කරන්න";
+                document.getElementById('formId').value = '';
+                document.getElementById('formLat').value = lat;
+                document.getElementById('formLng').value = lng;
+            }
+            document.getElementById('reportModal').classList.remove('hidden');
+        };
+
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            if (id === 'reportModal' && tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+        };
+
+        window.triggerEdit = (json) => { map.closePopup(); openReportModal(json); };
+        window.triggerDelete = (id) => { map.closePopup(); targetDeleteId = id; document.getElementById('deleteModal').classList.remove('hidden'); };
+
+        window.processImage = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) return showToast("ඡායාරූපයක් පමණක් තෝරන්න", "error");
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 500;
+                    let { width, height } = img;
+                    if (width > MAX_WIDTH) { height = Math.floor(height * (MAX_WIDTH / width)); width = MAX_WIDTH; }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    showImagePreview(canvas.toDataURL('image/jpeg', 0.6));
+                };
+                img.src = event.target.result;
             };
-            map.setView([userLocation.lat, userLocation.lng], 14);
+            reader.readAsDataURL(file);
+        };
 
-            // Add User Blue Marker
-            userMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
-              radius: 8,
-              fillColor: '#3b82f6',
-              color: '#ffffff',
-              weight: 3,
-              opacity: 1,
-              fillOpacity: 0.9
-            }).addTo(map).bindPopup("<b>ඔබ සිටින ස්ථානය</b>");
-          },
-          (error) => console.log('Geolocation access denied')
-        );
-      }
-    }
+        window.showImagePreview = (b64) => {
+            document.getElementById('formImageBase64').value = b64;
+            const imgEl = document.getElementById('imagePreview');
+            imgEl.src = b64; imgEl.classList.remove('hidden');
+            document.getElementById('uploadPrompt').classList.add('hidden');
+            document.getElementById('imageOverlay').classList.remove('hidden');
+            document.getElementById('btnRemoveImg').classList.remove('hidden');
+        };
 
-    // 3. Modal Controls
-    function openReportModal() {
-      document.getElementById('reportModal').classList.remove('hidden');
-    }
+        window.removeImage = () => {
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('galleryInput').value = '';
+            document.getElementById('formImageBase64').value = '';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imageOverlay').classList.add('hidden');
+            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('btnRemoveImg').classList.add('hidden');
+        };
 
-    function closeReportModal() {
-      document.getElementById('reportModal').classList.add('hidden');
-    }
+        document.getElementById('elephantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!db) return;
 
-    // 4. Submit Sighting & Display Marker
-    function submitReport(e) {
-      e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            const origLabel = document.getElementById('submitLabel').innerText;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සැකසෙමින්...`;
+            btn.disabled = true;
 
-      const count = document.getElementById('elephantCount').value;
-      const risk = document.getElementById('riskLevel').value;
-      const direction = document.getElementById('direction').value;
-      const notes = document.getElementById('locationNotes').value;
-      const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            try {
+                const id = document.getElementById('formId').value;
+                const payload = {
+                    location: document.getElementById('formLocation').value.trim(),
+                    count: parseInt(document.getElementById('formCount').value) || 1,
+                    direction: document.getElementById('formDirection').value.trim(),
+                    risk: document.querySelector('input[name="riskLvl"]:checked').value,
+                    lat: parseFloat(document.getElementById('formLat').value),
+                    lng: parseFloat(document.getElementById('formLng').value),
+                    imgData: document.getElementById('formImageBase64').value,
+                    userId: currentUser.uid,
+                    timestamp: Date.now()
+                };
 
-      // Determine Risk Color
-      let color = '#22c55e'; // Green
-      if (risk === 'high') color = '#ef4444'; // Red
-      else if (risk === 'medium') color = '#f59e0b'; // Yellow
+                const collRef = collection(db, 'reports');
 
-      // Custom Div Marker Icon
-      const elephantIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style="background-color: ${color}; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; border: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">🐘</div>`,
-        iconSize: [38, 38],
-        iconAnchor: [19, 19]
-      });
+                if (id) {
+                    await updateDoc(doc(collRef, id), payload);
+                    showToast("වාර්තාව සාර්ථකව වෙනස් කරන ලදී.");
+                } else {
+                    await addDoc(collRef, payload);
+                    showToast("අනතුරු ඇඟවීම සාර්ථකව පද්ධතියට එක් කළා.");
+                }
+                closeModal('reportModal');
+            } catch (err) {
+                console.error("Save failed:", err);
+                showToast("සුරැකීමේදී දෝෂයක් ඇතිවිය.", "error");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">${origLabel}</span>`;
+                btn.disabled = false;
+            }
+        });
 
-      // Place Marker near User Location
-      const reportLat = userLocation.lat + (Math.random() - 0.5) * 0.004;
-      const reportLng = userLocation.lng + (Math.random() - 0.5) * 0.004;
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!targetDeleteId || !db) return;
+            const btn = document.getElementById('confirmDeleteBtn');
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> මකමින්...`;
+            btn.disabled = true;
 
-      const popupContent = `
-        <div style="font-family: 'Noto Sans Sinhala', sans-serif; min-width: 170px;">
-          <b style="color: ${color}; font-size: 14px;">🐘 අලි දර්ශනයක්!</b><br>
-          <b>අලින් ගණන:</b> ${count}<br>
-          <b>දිශාව:</b> ${direction}<br>
-          ${notes ? `<b>විස්තර:</b> ${notes}<br>` : ''}
-          <hr style="margin: 6px 0;">
-          <small style="color: #4b5563;"><b>වාර්තා කළේ:</b> ${currentUsername}</small><br>
-          <small style="color: #6b7280;">වේලාව: ${timeString}</small>
-        </div>
-      `;
+            try {
+                await deleteDoc(doc(db, 'reports', targetDeleteId));
+                showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
+                closeModal('deleteModal');
+            } catch (err) {
+                console.error("Delete failed:", err);
+                showToast("මකා දැමීම අසාර්ථකයි.", "error");
+            } finally {
+                btn.innerHTML = `ඔව්, මකන්න`;
+                btn.disabled = false;
+            }
+        });
 
-      L.marker([reportLat, reportLng], { icon: elephantIcon })
-        .addTo(map)
-        .bindPopup(popupContent)
-        .openPopup();
-
-      // High Risk Warning Siren
-      if (risk === 'high') {
-        playSiren();
-        alert(`⚠️ අවධානයට: ${currentUsername} විසින් ඉහළ අවදානම් අලි දර්ශනයක් වාර්තා කරන ලදී!`);
-      }
-
-      closeReportModal();
-      document.getElementById('reportForm').reset();
-    }
-
-    // 5. Web Audio Siren Tone Generator
-    function playSiren() {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(600, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.5);
-
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.0);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 1.0);
-      } catch (err) {
-        console.log('Audio Context error', err);
-      }
-    }
-  </script>
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeMap();
+            connectFirebase();
+        });
+    </script>
 </body>
 </html>
