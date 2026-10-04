@@ -252,17 +252,22 @@
     <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'elephant-watch-live-sl';
-        let firebaseConfig = { projectId: "demo" };
-        try {
-            if (typeof __firebase_config !== 'undefined') firebaseConfig = JSON.parse(__firebase_config);
-        } catch (e) { console.warn("Firebase config parse error, using demo."); }
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
+            authDomain: "elipent-4e589.firebaseapp.com",
+            projectId: "elipent-4e589",
+            storageBucket: "elipent-4e589.firebasestorage.app",
+            messagingSenderId: "363464948428",
+            appId: "1:363464948428:web:050f60abe62cdda9eee069",
+            measurementId: "G-B2BVZ142HR"
+        };
 
-        let app, db, auth, currentUser;
+        let app, db, auth, analytics, currentUser;
         let map, userMarker, tempMarker;
         let reportsData = [];
         let mapMarkers = {}; 
@@ -363,21 +368,16 @@
 
         async function connectFirebase() {
             try {
-                if (firebaseConfig.projectId === "demo") {
-                    renderEmptyState("දත්ත ගබඩාව (Demo Mode)"); return;
-                }
                 app = initializeApp(firebaseConfig);
+                analytics = getAnalytics(app);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                const customToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                if (customToken) await signInWithCustomToken(auth, customToken);
-                else await signInAnonymously(auth);
-
+                await signInAnonymously(auth);
                 currentUser = auth.currentUser;
                 if (!currentUser) throw new Error("Auth failed");
                 
-                const reportsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
+                const reportsRef = collection(db, 'elephant_reports');
                 let isFirstLoad = true;
 
                 onSnapshot(query(reportsRef), (snapshot) => {
@@ -401,7 +401,7 @@
                 });
             } catch (err) {
                 console.error("Setup error:", err);
-                renderEmptyState("පද්ධති දෝෂයකි. පිටුව රිෆ්‍රෙෂ් කරන්න.");
+                showToast("පද්ධති දෝෂයකි. පිටුව රිෆ්‍රෙෂ් කරන්න.", "error");
             }
         }
 
@@ -617,7 +617,7 @@
                     userId: currentUser.uid
                 };
 
-                const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
+                const collRef = collection(db, 'elephant_reports');
 
                 if (id) {
                     await updateDoc(doc(collRef, id), payload);
@@ -644,7 +644,7 @@
             btn.disabled = true;
 
             try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reports', targetDeleteId));
+                await deleteDoc(doc(db, 'elephant_reports', targetDeleteId));
                 showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
                 closeModal('deleteModal');
             } catch (err) {
