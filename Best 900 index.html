@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>අලි ඉරුපද්ධතිය - Elephant Tracking Map</title>
+    <title>අලි ඉරුපද්ධතිය - Elephant Watch</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -31,7 +31,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.65);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -43,35 +43,38 @@
             padding: 20px;
             width: 90%;
             max-width: 420px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
         }
         .modal-header {
             font-size: 1.2rem;
             font-weight: bold;
             margin-bottom: 12px;
-            color: #2c3e50;
+            color: #1b5e20;
         }
         .input-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
         .input-group label {
             display: block;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-            color: #555;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: #333;
+            font-weight: 600;
         }
         .input-group input, .input-group textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
         .btn {
-            background: #27ae60;
+            background: #2e7d32;
             color: white;
             border: none;
-            padding: 10px 18px;
+            padding: 10px 16px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
@@ -79,7 +82,27 @@
             font-size: 1rem;
         }
         .btn:hover {
-            background: #219150;
+            background: #1b5e20;
+        }
+
+        /* Pure Elephant Icon (No Borders/Background) */
+        .pure-elephant-icon {
+            background: transparent !important;
+            border: none !important;
+            font-size: 32px;
+            line-height: 32px;
+            text-align: center;
+            filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.7));
+        }
+
+        /* Live Location Marker */
+        .live-location-dot {
+            width: 16px;
+            height: 16px;
+            background-color: #1e88e5;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(30, 136, 229, 0.8);
         }
 
         /* Bottom Sheet - Recent Reports */
@@ -91,10 +114,10 @@
             background: #ffffff;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
             z-index: 1000;
             transition: transform 0.3s ease-in-out;
-            max-height: 60vh;
+            max-height: 55vh;
             display: flex;
             flex-direction: column;
         }
@@ -105,95 +128,87 @@
             width: 100%;
             padding: 12px 20px;
             cursor: pointer;
-            background: #f8f9fa;
+            background: #f1f8e9;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #dedede;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-weight: bold;
             user-select: none;
+            color: #1b5e20;
         }
         .drag-bar {
             width: 40px;
-            height: 5px;
-            background: #ccc;
-            border-radius: 3px;
+            height: 4px;
+            background: #a5d6a7;
+            border-radius: 2px;
             margin: 0 auto 6px auto;
         }
         .reports-list {
-            padding: 15px;
+            padding: 12px;
             overflow-y: auto;
             flex: 1;
         }
         .report-item {
             border: 1px solid #e0e0e0;
-            padding: 12px;
+            padding: 10px;
             border-radius: 10px;
-            margin-bottom: 10px;
-            background: #fdfdfd;
-        }
-        .report-user {
-            font-weight: bold;
-            color: #2e7d32;
-        }
-        .report-time {
-            font-size: 0.8rem;
-            color: #888;
-            float: right;
+            margin-bottom: 8px;
+            background: #fafafa;
         }
 
-        /* Elephant Custom Icon Style */
-        .elephant-marker {
-            background-color: #ffffff;
-            border: 2px solid #2e7d32;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            font-size: 20px;
-        }
-
-        /* Add Report Floating Button */
+        /* Floating Add Button */
         .fab-btn {
             position: fixed;
             right: 20px;
-            bottom: 70px;
+            bottom: 65px;
             z-index: 1001;
-            background: #e74c3c;
+            background: #d32f2f;
             color: white;
             border: none;
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            font-size: 28px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* Popup Comment Box */
-        .popup-comments {
-            max-height: 120px;
+        /* Popup Content & Scrollable Comments */
+        .popup-card {
+            width: 240px;
+        }
+        .popup-img {
+            width: 100%;
+            max-height: 140px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 6px 0;
+        }
+        .popup-comments-container {
+            max-height: 110px;
             overflow-y: auto;
-            margin: 10px 0;
-            border-top: 1px solid #eee;
-            padding-top: 5px;
+            margin: 8px 0;
+            padding-right: 4px;
+            border-top: 1px dashed #ccc;
+            padding-top: 6px;
         }
-        .comment-item {
-            font-size: 0.85rem;
-            margin-bottom: 4px;
+        .comment-box {
+            font-size: 0.82rem;
             background: #f1f3f4;
-            padding: 4px 8px;
+            padding: 5px 8px;
             border-radius: 6px;
+            margin-bottom: 4px;
+            word-break: break-word;
         }
-        .comment-user {
+        .comment-author {
             font-weight: bold;
-            color: #1a73e8;
+            color: #1565c0;
         }
     </style>
 </head>
@@ -202,10 +217,10 @@
     <!-- Map Container -->
     <div id="map"></div>
 
-    <!-- Floating Button to Add Elephant Spot -->
+    <!-- Floating Add Button -->
     <button class="fab-btn" onclick="openAddReportModal()" title="අලි සිටින තැනක් ලකුණු කරන්න">+</button>
 
-    <!-- Bottom Sheet: Recent Reports -->
+    <!-- Bottom Sheet -->
     <div class="bottom-sheet" id="bottomSheet">
         <div class="drag-handle" onclick="toggleBottomSheet()">
             <div>
@@ -215,7 +230,7 @@
             <span id="sheetToggleIcon">▼</span>
         </div>
         <div class="reports-list" id="reportsContainer">
-            <p style="text-align: center; color: #777;">වාර්තා කිසිවක් නැත.</p>
+            <p style="text-align: center; color: #777; padding: 10px;">වාර්තා කිසිවක් නැත.</p>
         </div>
     </div>
 
@@ -223,17 +238,17 @@
     <div class="modal-overlay" id="usernameModal" style="display: none;">
         <div class="modal-card">
             <div class="modal-header">සාදරයෙන් පිළිගනිමු!</div>
-            <p style="font-size: 0.9rem; margin-bottom: 12px; color: #666;">
-                කරුණාකර ඔබගේ නම (Username) ඇතුළත් කරන්න. (මෙම ෆෝන් එක සඳහා එක් වරක් පමණක් ඇතුළත් කිරීම ප්‍රමාණවත්ය)
+            <p style="font-size: 0.9rem; margin-bottom: 12px; color: #555;">
+                කරුණාකර ඔබගේ නම (Username) ඇතුළත් කරන්න. (මෙම ෆෝන් එක සඳහා එක් වරක් පමණක් ඇතුළත් කරනු ලැබේ)
             </p>
             <div class="input-group">
                 <input type="text" id="usernameInput" placeholder="ඔබගේ නම..." />
             </div>
-            <button class="btn" onclick="saveUsername()">ඉදිරියට යන්න</button>
+            <button class="btn" onclick="saveUsername()">ඇතුළු වන්න</button>
         </div>
     </div>
 
-    <!-- Add Elephant Report Modal -->
+    <!-- Add Elephant Sighting Modal -->
     <div class="modal-overlay" id="addReportModal" style="display: none;">
         <div class="modal-card">
             <div class="modal-header">අලි සිටින ස්ථානයක් වාර්තා කරන්න</div>
@@ -243,13 +258,17 @@
             </div>
             <div class="input-group">
                 <label>විස්තරය / දිශාව:</label>
-                <textarea id="reportDesc" rows="3" placeholder="විස්තරයක් ඇතුළත් කරන්න..."></textarea>
+                <textarea id="reportDesc" rows="2" placeholder="විස්තරයක් ඇතුළත් කරන්න..."></textarea>
             </div>
-            <p style="font-size: 0.8rem; color: #e74c3c; margin-bottom: 10px;">
-                * මෙම වාර්තාව සහ ලකුණ විනාඩි 30කට පසුව ඉබේම මැකී යනු ඇත.
+            <div class="input-group">
+                <label>ඡායාරූපයක් ඇතුළත් කරන්න (Photo):</label>
+                <input type="file" id="photoInput" accept="image/*" capture="environment" />
+            </div>
+            <p style="font-size: 0.78rem; color: #d32f2f; margin-bottom: 12px;">
+                * මෙම වාර්තාව සහ ලකුණ විනාඩි 30කට පසුව ස්වයංක්‍රීයව මැකී යයි.
             </p>
-            <button class="btn" onclick="submitReport()">ස්ථානය සිතියමේ ලකුණු කරන්න</button>
-            <button class="btn" style="background: #7f8c8d; margin-top: 8px;" onclick="closeAddReportModal()">අවලංගු කරන්න</button>
+            <button class="btn" onclick="submitReport()">ස්ථානය ලකුණු කරන්න</button>
+            <button class="btn" style="background: #757575; margin-top: 8px;" onclick="closeAddReportModal()">අවලංගු කරන්න</button>
         </div>
     </div>
 
@@ -260,6 +279,7 @@
         let currentUser = "";
         let reports = [];
         let selectedLocation = null;
+        let liveLocationMarker = null;
 
         window.onload = function() {
             currentUser = localStorage.getItem('elephant_app_username');
@@ -268,8 +288,7 @@
             }
             initMap();
             loadReportsFromStorage();
-            // Every 10 seconds check and remove reports older than 30 minutes
-            setInterval(cleanExpiredReports, 10000);
+            setInterval(cleanExpiredReports, 10000); // Check expiration every 10 seconds
         };
 
         function saveUsername() {
@@ -284,18 +303,48 @@
         }
 
         function initMap() {
-            // Sri Lanka Default View
-            map = L.map('map').setView([7.8731, 80.7718], 8);
+            // Initialize Leaflet Map
+            map = L.map('map', { zoomControl: false }).setView([7.8731, 80.7718], 8);
+            L.control.zoom({ position: 'topright' }).addTo(map);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // 1. Esri World Imagery (Satellite)
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
-                attribution: '© OpenStreetMap'
+                attribution: 'Tiles &copy; Esri'
             }).addTo(map);
 
+            // 2. Reference Layer (Boundaries, Districts, Roads, Names)
+            const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19
+            }).addTo(map);
+
+            // Map Click to Pick Location
             map.on('click', function(e) {
                 selectedLocation = e.latlng;
                 openAddReportModal();
             });
+
+            // Live Location Tracker
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    if (!liveLocationMarker) {
+                        const liveIcon = L.divIcon({
+                            className: 'live-location-dot',
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                        });
+                        liveLocationMarker = L.marker([lat, lng], { icon: liveIcon }).addTo(map)
+                            .bindPopup('ඔබ දැනට සිටින ස්ථානය');
+                    } else {
+                        liveLocationMarker.setLatLng([lat, lng]);
+                    }
+                }, err => {
+                    console.log("Geolocation error: ", err);
+                }, { enableHighAccuracy: true });
+            }
         }
 
         function toggleBottomSheet() {
@@ -316,20 +365,35 @@
             document.getElementById('addReportModal').style.display = 'none';
         }
 
-        function createElephantIcon() {
+        // Elephant Icon with NO background or border
+        function createPureElephantIcon() {
             return L.divIcon({
-                className: 'elephant-marker',
+                className: 'pure-elephant-icon',
                 html: '🐘',
-                iconSize: [36, 36],
-                iconAnchor: [18, 18],
-                popupAnchor: [0, -18]
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [0, -16]
             });
         }
 
         function submitReport() {
             const count = document.getElementById('elephantCount').value || 1;
             const desc = document.getElementById('reportDesc').value.trim();
+            const photoFile = document.getElementById('photoInput').files[0];
 
+            if (photoFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    createAndSaveReport(count, desc, e.target.result);
+                };
+                reader.readAsDataURL(photoFile);
+            } else {
+                createAndSaveReport(count, desc, null);
+            }
+        }
+
+        function createAndSaveReport(count, desc, photoData) {
+            const now = new Date();
             const report = {
                 id: 'rep_' + Date.now(),
                 user: currentUser,
@@ -337,6 +401,9 @@
                 lng: selectedLocation.lng,
                 count: count,
                 desc: desc,
+                photo: photoData,
+                dateStr: now.toLocaleDateString('si-LK'),
+                timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 timestamp: Date.now(),
                 comments: []
             };
@@ -346,38 +413,50 @@
             renderReportMarker(report);
             updateReportsUI();
             closeAddReportModal();
+
+            // Clear inputs
             document.getElementById('reportDesc').value = '';
+            document.getElementById('photoInput').value = '';
         }
 
         function renderReportMarker(report) {
-            const marker = L.marker([report.lat, report.lng], { icon: createElephantIcon() }).addTo(map);
+            const marker = L.marker([report.lat, report.lng], { icon: createPureElephantIcon() }).addTo(map);
             report.marker = marker;
 
             const popupContent = document.createElement('div');
+            popupContent.className = 'popup-card';
             updatePopupContent(popupContent, report);
 
             marker.bindPopup(popupContent);
         }
 
         function updatePopupContent(container, report) {
-            const timeAgo = Math.floor((Date.now() - report.timestamp) / 60000);
+            const minsAgo = Math.floor((Date.now() - report.timestamp) / 60000);
+            
+            let photoHTML = report.photo ? `<img src="${report.photo}" class="popup-img" alt=" Elephant Photo" />` : '';
+            
             let commentsHTML = report.comments.map(c => `
-                <div class="comment-item">
-                    <span class="comment-user">${escapeHtml(c.user)}:</span> ${escapeHtml(c.text)}
+                <div class="comment-box">
+                    <span class="comment-author">${escapeHtml(c.user)}:</span> ${escapeHtml(c.text)}
                 </div>
             `).join('');
 
             container.innerHTML = `
-                <div style="min-width: 200px;">
-                    <h4 style="color:#2e7d32; margin-bottom:4px;">🐘 අලි ගණන: ${report.count}</h4>
-                    <p style="font-size:0.85rem; color:#555;"><strong>වාර්තා කළේ:</strong> ${escapeHtml(report.user)}</p>
-                    <p style="font-size:0.85rem; color:#555;"><strong>විස්තරය:</strong> ${escapeHtml(report.desc || 'නැත')}</p>
-                    <p style="font-size:0.75rem; color:#888;">මිනිත්තු ${timeAgo} කට පෙර</p>
-                    <hr style="margin: 8px 0; border:0; border-top:1px solid #ddd;" />
-                    <div class="popup-comments">${commentsHTML || '<p style="font-size:0.8rem; color:#888;">කමෙන්ට් නැත.</p>'}</div>
-                    <div style="display:flex; gap:4px; margin-top:6px;">
-                        <input type="text" id="comment_input_${report.id}" placeholder="කමෙන්ට් එකක් ලියන්න..." style="flex:1; padding:4px; font-size:0.8rem; border:1px solid #ccc; border-radius:4px;" />
-                        <button onclick="addComment('${report.id}')" style="background:#27ae60; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.8rem; cursor:pointer;">යවන්න</button>
+                <div>
+                    <h4 style="color:#2e7d32; margin-bottom:2px;">🐘 අලින් ගණන: ${report.count}</h4>
+                    <p style="font-size:0.8rem; color:#444;"><strong>වාර්තා කළේ:</strong> ${escapeHtml(report.user)}</p>
+                    <p style="font-size:0.78rem; color:#666;"><strong>දිනය/වේලාව:</strong> ${report.dateStr} (${report.timeStr})</p>
+                    <p style="font-size:0.8rem; color:#333; margin-top:2px;"><strong>විස්තරය:</strong> ${escapeHtml(report.desc || 'නැත')}</p>
+                    ${photoHTML}
+                    <p style="font-size:0.75rem; color:#e53935; margin-top:3px;">මිනිත්තු ${minsAgo} කට පෙර (විනාඩි 30න් මැකී යයි)</p>
+                    
+                    <div class="popup-comments-container">
+                        ${commentsHTML || '<p style="font-size:0.78rem; color:#888;">කමෙන්ට් නැත.</p>'}
+                    </div>
+
+                    <div style="display:flex; gap:4px; margin-top:4px;">
+                        <input type="text" id="comment_input_${report.id}" placeholder="කමෙන්ට් එකක් ලියන්න..." style="flex:1; padding:4px; font-size:0.78rem; border:1px solid #ccc; border-radius:4px;" />
+                        <button onclick="addComment('${report.id}')" style="background:#2e7d32; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.78rem; cursor:pointer;">යවන්න</button>
                     </div>
                 </div>
             `;
@@ -392,7 +471,7 @@
                     text: input.value.trim(),
                     time: Date.now()
                 });
-                // Reset the 30-minute expiration timer on comment/modify
+                // Reset 30-min expiration timer on comment/modify
                 report.timestamp = Date.now();
                 saveReportsToStorage();
                 
@@ -405,8 +484,8 @@
 
         function cleanExpiredReports() {
             const now = Date.now();
-            const expiryLimit = 30 * 60 * 1000; // 30 mins
-            const initialCount = reports.length;
+            const expiryLimit = 30 * 60 * 1000; // 30 minutes
+            const initialLength = reports.length;
 
             reports = reports.filter(report => {
                 const isExpired = (now - report.timestamp) > expiryLimit;
@@ -416,7 +495,7 @@
                 return !isExpired;
             });
 
-            if (reports.length !== initialCount) {
+            if (reports.length !== initialLength) {
                 saveReportsToStorage();
                 updateReportsUI();
             }
@@ -427,7 +506,7 @@
             const container = document.getElementById('reportsContainer');
 
             if (reports.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #777;">මෑත කාලීන වාර්තා කිසිවක් නැත.</p>';
+                container.innerHTML = '<p style="text-align: center; color: #777; padding: 10px;">මෑත කාලීන වාර්තා කිසිවක් නැත.</p>';
                 return;
             }
 
@@ -435,9 +514,9 @@
                 const minsAgo = Math.floor((Date.now() - r.timestamp) / 60000);
                 return `
                     <div class="report-item" onclick="focusOnReport('${r.id}')" style="cursor:pointer;">
-                        <span class="report-user">🐘 ${escapeHtml(r.user)}</span>
-                        <span class="report-time">මිනිත්තු ${minsAgo} කට පෙර</span>
-                        <p style="margin-top: 4px; font-size: 0.9rem;">අලි ගණන: ${r.count} | ${escapeHtml(r.desc)}</p>
+                        <span style="font-weight:bold; color:#2e7d32;">🐘 ${escapeHtml(r.user)}</span>
+                        <span style="font-size:0.75rem; color:#888; float:right;">මිනිත්තු ${minsAgo} කට පෙර</span>
+                        <p style="font-size:0.85rem; margin-top:2px;">අලින් ගණන: ${r.count} | ${escapeHtml(r.desc)}</p>
                     </div>
                 `;
             }).join('');
@@ -446,7 +525,7 @@
         function focusOnReport(id) {
             const report = reports.find(r => r.id === id);
             if (report) {
-                map.setView([report.lat, report.lng], 14);
+                map.setView([report.lat, report.lng], 15);
                 report.marker.openPopup();
                 toggleBottomSheet();
             }
@@ -460,6 +539,9 @@
                 lng: r.lng,
                 count: r.count,
                 desc: r.desc,
+                photo: r.photo,
+                dateStr: r.dateStr,
+                timeStr: r.timeStr,
                 timestamp: r.timestamp,
                 comments: r.comments
             }));
@@ -481,7 +563,7 @@
                     });
                     updateReportsUI();
                 } catch(e) {
-                    console.error("Error loading reports", e);
+                    console.error("Error loading reports:", e);
                 }
             }
         }
