@@ -1,156 +1,102 @@
 <!DOCTYPE html>
 <html lang="si">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>නව වාර්තාවක් එකතු කිරීම</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f6f9;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .card {
-      background: #ffffff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 400px;
-    }
-    h2 {
-      margin-top: 0;
-      color: #333;
-      font-size: 20px;
-    }
-    .form-group {
-      margin-bottom: 15px;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      color: #555;
-      font-weight: bold;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      resize: none;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #28a745;
-      color: white;
-      border: none;
-      padding: 12px;
-      width: 100%;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-    button:hover:not(:disabled) {
-      background-color: #218838;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elephant Watch</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, textarea, button {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>නව වාර්තාවක්</h2>
-    <div class="form-group">
-      <label for="reportInput">විස්තරය:</label>
-      <textarea id="reportInput" placeholder="වාර්තා විස්තරය මෙහි ලියන්න..."></textarea>
-    </div>
-    <button id="submitBtn">වාර්තා කරන්න</button>
-  </div>
+<div class="container">
+    <h2>Elephant Watch - වාර්තාවක් එකතු කරන්න</h2>
+    <form id="reportForm">
+        <label for="location">ස්ථානය:</label>
+        <input type="text" id="location" required placeholder="ස්ථානය ඇතුළත් කරන්න">
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        <label for="description">විස්තරය:</label>
+        <textarea id="description" rows="4" required placeholder="සිදුවීම විස්තර කරන්න"></textarea>
 
-    // ඔබේ Firebase ප්‍රවේශ දත්ත මෙහි යොදන්න
+        <button type="submit">වාර්තාව යවන්න</button>
+    </form>
+</div>
+
+<!-- Firebase SDK v12 -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+    // ඔබේ Firebase වින්‍යාසය
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
+      authDomain: "elipent-4e589.firebaseapp.com",
+      projectId: "elipent-4e589",
+      storageBucket: "elipent-4e589.firebasestorage.app",
+      messagingSenderId: "363464948428",
+      appId: "1:363464948428:web:e23f81df54b13003eee069",
+      measurementId: "G-8D4RDL6G4F"
     };
 
-    // Firebase ආරම්භ කිරීම
+    // Firebase සහ Firestore ආරම්භ කිරීම
     const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
     const db = getFirestore(app);
 
-    const submitBtn = document.getElementById("submitBtn");
-    const reportInput = document.getElementById("reportInput");
-
-    // පණිවිඩ පෙන්වීමට ටෝස්ට් ෆන්ක්ෂන් එක
-    function showToast(message) {
-      let toast = document.createElement("div");
-      toast.innerText = message;
-      toast.style.position = "fixed";
-      toast.style.bottom = "20px";
-      toast.style.left = "50%";
-      toast.style.transform = "translateX(-50%)";
-      toast.style.backgroundColor = "#333";
-      toast.style.color = "#fff";
-      toast.style.padding = "10px 20px";
-      toast.style.borderRadius = "5px";
-      toast.style.zIndex = "1000";
-      toast.style.fontSize = "14px";
-      document.body.appendChild(toast);
-
-      setTimeout(() => {
-        toast.remove();
-      }, 3000);
-    }
-
-    // දත්ත එකතු කිරීමේ ප්‍රධාන ක්‍රියාවලිය
-    async function addNewReport() {
-      const reportText = reportInput.value.trim();
-
-      if (!reportText) {
-        showToast("කරුණාකර පළමුව විස්තරයක් ඇතුළත් කරන්න!");
-        return;
-      }
-
-      try {
-        submitBtn.disabled = true; // ඩබල් ක්ලික් වීම වැළැක්වීමට සහ දත්ත යනකන් බටන් එක ඕෆ් කිරීමට
-        showToast("දත්ත යවමින් පවතී...");
-
-        // Firestore හි 'reports' කලෙක්ශන් එකට දත්ත යැවීම
-        await addDoc(collection(db, "reports"), {
-          description: reportText,
-          timestamp: new Date()
-        });
-
-        showToast("වාර්තාව සාර්ථකව එකතු කරන ලදී!");
-        reportInput.value = ""; // ඉන්පුට් එක හිස් කිරීම
+    // ෆෝම් එක සබ්මිට් වන විට ක්‍රියාත්මක වීම
+    const form = document.getElementById('reportForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-      } catch (error) {
-        console.error("දෝෂයක් ඇති විය: ", error);
-        showToast("දෝෂයක් ඇති විය: " + error.message);
-      } finally {
-        submitBtn.disabled = false; // වැඩේ අවසන් වූ පසු නැවත බටන් එක ක්‍රියාත්මක කිරීම
-      }
-    }
+        const locationVal = document.getElementById('location').value;
+        const descriptionVal = document.getElementById('description').value;
 
-    // බොත්තම එබූ විට ක්‍රියාත්මක වීමට
-    submitBtn.addEventListener("click", addNewReport);
-  </script>
+        try {
+            const docRef = await addDoc(collection(db, "reports"), {
+                location: locationVal,
+                description: descriptionVal,
+                timestamp: new Date()
+            });
+            alert("වාර්තාව සාර්ථකව සුරකින ලදී!");
+            form.reset();
+        } catch (error) {
+            alert("දෝෂයයි: " + error.message);
+            console.error("Error adding document: ", error);
+        }
+    });
+</script>
 
 </body>
 </html>
