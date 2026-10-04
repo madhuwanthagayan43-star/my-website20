@@ -1,462 +1,514 @@
+```html
 <!DOCTYPE html>
 <html lang="si">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>අලි ඉරුපද්ධතිය - Elephant Watch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>අලි ඉරුපද්ධතිය - Elephant Watch Satellite Map</title>
+
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts (Inter & Noto Sans Sinhala) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        body {
+            font-family: 'Noto Sans Sinhala', 'Inter', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        html, body {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-        }
+
         #map {
-            height: 100%;
-            width: 100%;
+            width: 100vw;
+            height: 100vh;
             z-index: 1;
         }
-        
-        /* Modal Popup styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.65);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-        .modal-card {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 20px;
-            width: 90%;
-            max-width: 420px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-        }
-        .modal-header {
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 12px;
-            color: #1b5e20;
-        }
-        .input-group {
-            margin-bottom: 12px;
-        }
-        .input-group label {
-            display: block;
-            font-size: 0.85rem;
-            margin-bottom: 4px;
-            color: #333;
-            font-weight: 600;
-        }
-        .input-group input, .input-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
-        .btn {
-            background: #2e7d32;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            font-size: 1rem;
-        }
-        .btn:hover {
-            background: #1b5e20;
-        }
 
-        /* Pure Elephant Icon (No Borders/Background) */
-        .pure-elephant-icon {
+        /* Custom Pure Elephant Marker (No Circle/Background) */
+        .pure-elephant-marker {
             background: transparent !important;
             border: none !important;
-            font-size: 32px;
-            line-height: 32px;
+            font-size: 34px;
+            line-height: 34px;
             text-align: center;
-            filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.7));
+            filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.8));
+            transition: transform 0.2s ease;
         }
 
-        /* Live Location Marker */
-        .live-location-dot {
-            width: 16px;
-            height: 16px;
-            background-color: #1e88e5;
+        .pure-elephant-marker:active {
+            transform: scale(1.2);
+        }
+
+        /* Live GPS Pulsing Marker */
+        .user-gps-marker {
+            width: 18px;
+            height: 18px;
+            background-color: #3b82f6;
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 10px rgba(30, 136, 229, 0.8);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.9);
+            animation: pulse-ring 2s infinite;
         }
 
-        /* Bottom Sheet - Recent Reports */
-        .bottom-sheet {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+
+        /* Custom Leaflet Popup Styling matching screenshot */
+        .leaflet-popup-content-wrapper {
             background: #ffffff;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
-            z-index: 1000;
-            transition: transform 0.3s ease-in-out;
-            max-height: 55vh;
-            display: flex;
-            flex-direction: column;
+            border-radius: 16px;
+            padding: 4px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 14px;
+            width: 250px !important;
+            font-family: 'Noto Sans Sinhala', sans-serif;
+        }
+
+        .leaflet-container a.leaflet-popup-close-button {
+            top: 10px;
+            right: 12px;
+            color: #6b7280;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Custom Scrollbar for Comments */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        /* Bottom Sheet Transitions */
+        .bottom-sheet {
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .bottom-sheet.collapsed {
-            transform: translateY(calc(100% - 50px));
-        }
-        .drag-handle {
-            width: 100%;
-            padding: 12px 20px;
-            cursor: pointer;
-            background: #f1f8e9;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            border-bottom: 1px solid #dedede;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            user-select: none;
-            color: #1b5e20;
-        }
-        .drag-bar {
-            width: 40px;
-            height: 4px;
-            background: #a5d6a7;
-            border-radius: 2px;
-            margin: 0 auto 6px auto;
-        }
-        .reports-list {
-            padding: 12px;
-            overflow-y: auto;
-            flex: 1;
-        }
-        .report-item {
-            border: 1px solid #e0e0e0;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            background: #fafafa;
-        }
-
-        /* Floating Add Button */
-        .fab-btn {
-            position: fixed;
-            right: 20px;
-            bottom: 65px;
-            z-index: 1001;
-            background: #d32f2f;
-            color: white;
-            border: none;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            font-size: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* Popup Content & Scrollable Comments */
-        .popup-card {
-            width: 240px;
-        }
-        .popup-img {
-            width: 100%;
-            max-height: 140px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin: 6px 0;
-        }
-        .popup-comments-container {
-            max-height: 110px;
-            overflow-y: auto;
-            margin: 8px 0;
-            padding-right: 4px;
-            border-top: 1px dashed #ccc;
-            padding-top: 6px;
-        }
-        .comment-box {
-            font-size: 0.82rem;
-            background: #f1f3f4;
-            padding: 5px 8px;
-            border-radius: 6px;
-            margin-bottom: 4px;
-            word-break: break-word;
-        }
-        .comment-author {
-            font-weight: bold;
-            color: #1565c0;
+            transform: translateY(calc(100% - 62px));
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-gray-800 overflow-hidden">
 
     <!-- Map Container -->
     <div id="map"></div>
 
-    <!-- Floating Add Button -->
-    <button class="fab-btn" onclick="openAddReportModal()" title="අලි සිටින තැනක් ලකුණු කරන්න">+</button>
-
-    <!-- Bottom Sheet -->
-    <div class="bottom-sheet" id="bottomSheet">
-        <div class="drag-handle" onclick="toggleBottomSheet()">
-            <div>
-                <div class="drag-bar"></div>
-                🐘 මෑත කාලීන වාර්තා (<span id="reportCount">0</span>)
-            </div>
-            <span id="sheetToggleIcon">▼</span>
+    <!-- Top Left Floating Header (Green Title Badge) -->
+    <div class="fixed top-3 left-3 z-[1000] flex flex-col gap-1 items-start">
+        <div class="bg-emerald-700/95 backdrop-blur-md text-white px-3.5 py-1.5 rounded-2xl shadow-lg border border-emerald-500/30 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-pulse"></span>
+            <span class="font-bold text-sm tracking-wide">අලි ඉරුපද්ධතිය</span>
         </div>
-        <div class="reports-list" id="reportsContainer">
-            <p style="text-align: center; color: #777; padding: 10px;">වාර්තා කිසිවක් නැත.</p>
+        <div class="bg-emerald-900/80 backdrop-blur-sm text-emerald-100 text-[11px] px-2.5 py-0.5 rounded-xl border border-emerald-600/40 font-medium">
+            📍 සැටලයිට් සිතියම
         </div>
     </div>
 
-    <!-- Username Prompt Modal -->
-    <div class="modal-overlay" id="usernameModal" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">සාදරයෙන් පිළිගනිමු!</div>
-            <p style="font-size: 0.9rem; margin-bottom: 12px; color: #555;">
-                කරුණාකර ඔබගේ නම (Username) ඇතුළත් කරන්න. (මෙම ෆෝන් එක සඳහා එක් වරක් පමණක් ඇතුළත් කරනු ලැබේ)
-            </p>
-            <div class="input-group">
-                <input type="text" id="usernameInput" placeholder="ඔබගේ නම..." />
+    <!-- Top Right Floating GPS Locate Button -->
+    <button id="gpsBtn" onclick="centerOnUserLocation()" class="fixed top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md text-gray-700 p-2.5 rounded-2xl shadow-lg border border-gray-200 active:scale-95 transition-transform flex items-center justify-center">
+        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+        </svg>
+    </button>
+
+    <!-- Floating Action Button (+) for Add Sighting -->
+    <button onclick="triggerAddReport()" class="fixed bottom-20 right-4 z-[1001] bg-red-600 hover:bg-red-700 active:scale-95 text-white w-14 h-14 rounded-full shadow-2xl border-2 border-white/80 flex items-center justify-center transition-all">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+        </svg>
+    </button>
+
+    <!-- Collapsible Bottom Sheet (Matching Dark Theme from Screenshot) -->
+    <div id="bottomSheet" class="bottom-sheet fixed bottom-0 left-0 w-full bg-[#1c1c1e] text-white rounded-t-3xl shadow-2xl z-[1000] max-h-[60vh] flex flex-col border-t border-gray-800">
+        <!-- Drag Handle / Header -->
+        <div onclick="toggleBottomSheet()" class="w-full py-3 px-5 cursor-pointer bg-[#2c2c2e] rounded-t-3xl flex items-center justify-between select-none">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🐘</span>
+                <span class="font-bold text-sm tracking-wide text-gray-100">මෑත කාලීන වාර්තා</span>
+                <span id="reportsCountBadge" class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
             </div>
-            <button class="btn" onclick="saveUsername()">ඇතුළු වන්න</button>
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-1 bg-gray-500 rounded-full"></div>
+                <span id="sheetChevron" class="text-gray-400 text-xs">▼</span>
+            </div>
+        </div>
+
+        <!-- Reports List Container -->
+        <div id="reportsList" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-2.5">
+            <div class="text-center text-gray-400 py-6 text-sm">මෑත කාලීන වාර්තා කිසිවක් නොමැත.</div>
         </div>
     </div>
 
-    <!-- Add Elephant Sighting Modal -->
-    <div class="modal-overlay" id="addReportModal" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">අලි සිටින ස්ථානයක් වාර්තා කරන්න</div>
-            <div class="input-group">
-                <label>අලින් ගණන:</label>
-                <input type="number" id="elephantCount" value="1" min="1" />
+    <!-- First Time Username Modal -->
+    <div id="usernameModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4 border border-gray-100">
+            <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-3xl">
+                🐘
             </div>
-            <div class="input-group">
-                <label>විස්තරය / දිශාව:</label>
-                <textarea id="reportDesc" rows="2" placeholder="විස්තරයක් ඇතුළත් කරන්න..."></textarea>
-            </div>
-            <div class="input-group">
-                <label>ඡායාරූපයක් ඇතුළත් කරන්න (Photo):</label>
-                <input type="file" id="photoInput" accept="image/*" capture="environment" />
-            </div>
-            <p style="font-size: 0.78rem; color: #d32f2f; margin-bottom: 12px;">
-                * මෙම වාර්තාව සහ ලකුණ විනාඩි 30කට පසුව ස්වයංක්‍රීයව මැකී යයි.
+            <h3 class="text-lg font-bold text-gray-900">වෙබ්අඩවියට සාදරයෙන් පිළිගනිමු!</h3>
+            <p class="text-xs text-gray-600 leading-relaxed">
+                කරුණාකර ඔබගේ නම (Username) ඇතුළත් කරන්න. මෙම දුරකථනය සඳහා එක් වරක් පමණක් ඇතුළත් කිරීම ප්‍රමාණවත් වේ.
             </p>
-            <button class="btn" onclick="submitReport()">ස්ථානය ලකුණු කරන්න</button>
-            <button class="btn" style="background: #757575; margin-top: 8px;" onclick="closeAddReportModal()">අවලංගු කරන්න</button>
+            <input type="text" id="usernameInput" placeholder="ඔබගේ නම / Username..." class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium text-gray-800">
+            <button onclick="saveUsername()" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 rounded-2xl shadow-lg transition-all text-sm">
+                ඉදිරියට යන්න
+            </button>
         </div>
+    </div>
+
+    <!-- Add Report Modal -->
+    <div id="addReportModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="modalTitle" class="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span>🐘</span> අලි සිටින ස්ථානයක් වාර්තා කරන්න
+                </h3>
+                <button onclick="closeAddReportModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+
+            <!-- Inputs -->
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">අලින් ගණන:</label>
+                    <input type="number" id="elephantCount" value="1" min="1" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-gray-800">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">විස්තරය / දිශාව:</label>
+                    <textarea id="reportDesc" rows="3" placeholder="උදා: පාර පැනීමට සූදානම් වේ / ගම්මානය දෙසට..." class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-gray-800 resize-none"></textarea>
+                </div>
+
+                <!-- Photo Selection Option (Camera / Gallery) -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">ඡායාරූපයක් ඇතුළත් කරන්න:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Camera Trigger Button -->
+                        <button type="button" onclick="document.getElementById('cameraInput').click()" class="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold transition-all">
+                            📷 කැමරාවෙන්
+                        </button>
+                        <!-- Gallery Trigger Button -->
+                        <button type="button" onclick="document.getElementById('galleryInput').click()" class="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-xl text-xs font-semibold transition-all">
+                            🖼️ ගැලරියෙන්
+                        </button>
+                    </div>
+
+                    <!-- Hidden Inputs -->
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleImageSelected(this)">
+                    <input type="file" id="galleryInput" accept="image/*" class="hidden" onchange="handleImageSelected(this)">
+
+                    <!-- Preview Thumbnail -->
+                    <div id="photoPreviewContainer" class="mt-2 hidden relative group">
+                        <img id="photoPreviewImg" src="" alt="Preview" class="w-full h-32 object-cover rounded-xl border border-gray-300 shadow-sm">
+                        <button type="button" onclick="removePhoto()" class="absolute top-1.5 right-1.5 bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-bold shadow-md">
+                            ඉවත් කරන්න
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-1.5">
+                    <span>⚠️</span>
+                    <span>මෙම වාර්තාව සහ සිතියම් ලකුණ විනාඩි 30කට පසුව ස්වයංක්‍රීයව මැකී යයි.</span>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveReport()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md text-xs">
+                    ස්ථානය සිතියමේ ලකුණු කරන්න
+                </button>
+                <button onclick="closeAddReportModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-xs">
+                    අවලංගු
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[3000] bg-gray-900/90 text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-medium transition-all duration-300 opacity-0 pointer-events-none flex items-center gap-2 border border-gray-700">
+        <span id="toastMsg">සංදේශය</span>
     </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         let map;
         let currentUser = "";
         let reports = [];
-        let selectedLocation = null;
-        let liveLocationMarker = null;
+        let tempMarkerLocation = null;
+        let selectedPhotoData = null;
+        let editingReportId = null;
+        let userGpsMarker = null;
 
-        window.onload = function() {
-            currentUser = localStorage.getItem('elephant_app_username');
+        // On Page Load
+        window.onload = function () {
+            // Check stored username for this specific device
+            currentUser = localStorage.getItem('elephant_user');
             if (!currentUser) {
-                document.getElementById('usernameModal').style.display = 'flex';
+                document.getElementById('usernameModal').classList.remove('hidden');
             }
+
             initMap();
             loadReportsFromStorage();
-            setInterval(cleanExpiredReports, 10000); // Check expiration every 10 seconds
+
+            // Periodic clean-up of reports older than 30 minutes
+            setInterval(cleanExpiredReports, 10000);
         };
+
+        function initMap() {
+            // Center of Sri Lanka by default
+            map = L.map('map', { zoomControl: false }).setView([7.8731, 80.7718], 8);
+
+            // 1. Esri World Imagery (Satellite Layer)
+            const satelliteTile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(map);
+
+            // 2. Esri Boundaries, Districts, Roads and Place Labels Overlay
+            const labelsOverlay = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19
+            }).addTo(map);
+
+            // Map Click Listener to pick location
+            map.on('click', function (e) {
+                tempMarkerLocation = e.latlng;
+                openAddReportModal();
+            });
+
+            // Start Live Location Tracking
+            trackUserLocation();
+        }
+
+        function trackUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+
+                        if (!userGpsMarker) {
+                            const gpsIcon = L.divIcon({
+                                className: 'user-gps-marker',
+                                iconSize: [18, 18],
+                                iconAnchor: [9, 9]
+                            });
+                            userGpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+                        } else {
+                            userGpsMarker.setLatLng([lat, lng]);
+                        }
+                    },
+                    (err) => { console.warn("GPS tracking error:", err); },
+                    { enableHighAccuracy: true }
+                );
+            }
+        }
+
+        function centerOnUserLocation() {
+            if (userGpsMarker) {
+                map.setView(userGpsMarker.getLatLng(), 15);
+                showToast("ඔබගේ සජීවී ස්ථානයට යොමු විය.");
+            } else {
+                showToast("ජීපීඑස් (GPS) ස්ථානය සොයාගනිමින් පවතී...");
+            }
+        }
 
         function saveUsername() {
             const val = document.getElementById('usernameInput').value.trim();
             if (val) {
                 currentUser = val;
-                localStorage.setItem('elephant_app_username', currentUser);
-                document.getElementById('usernameModal').style.display = 'none';
+                localStorage.setItem('elephant_user', currentUser);
+                document.getElementById('usernameModal').classList.add('hidden');
+                showToast("සාදරයෙන් පිළිගනිමු, " + currentUser + "!");
             } else {
-                alert('කරුණාකර නමක් ඇතුළත් කරන්න.');
+                showToast("කරුණාකර නමක් ඇතුළත් කරන්න.");
             }
         }
 
-        function initMap() {
-            // Initialize Leaflet Map
-            map = L.map('map', { zoomControl: false }).setView([7.8731, 80.7718], 8);
-            L.control.zoom({ position: 'topright' }).addTo(map);
+        function handleImageSelected(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
 
-            // 1. Esri World Imagery (Satellite)
-            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri'
-            }).addTo(map);
+                reader.onload = function (e) {
+                    selectedPhotoData = e.target.result;
+                    document.getElementById('photoPreviewImg').src = selectedPhotoData;
+                    document.getElementById('photoPreviewContainer').classList.remove('hidden');
+                };
 
-            // 2. Reference Layer (Boundaries, Districts, Roads, Names)
-            const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19
-            }).addTo(map);
-
-            // Map Click to Pick Location
-            map.on('click', function(e) {
-                selectedLocation = e.latlng;
-                openAddReportModal();
-            });
-
-            // Live Location Tracker
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    
-                    if (!liveLocationMarker) {
-                        const liveIcon = L.divIcon({
-                            className: 'live-location-dot',
-                            iconSize: [16, 16],
-                            iconAnchor: [8, 8]
-                        });
-                        liveLocationMarker = L.marker([lat, lng], { icon: liveIcon }).addTo(map)
-                            .bindPopup('ඔබ දැනට සිටින ස්ථානය');
-                    } else {
-                        liveLocationMarker.setLatLng([lat, lng]);
-                    }
-                }, err => {
-                    console.log("Geolocation error: ", err);
-                }, { enableHighAccuracy: true });
+                reader.readAsDataURL(file);
             }
+        }
+
+        function removePhoto() {
+            selectedPhotoData = null;
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('galleryInput').value = '';
+            document.getElementById('photoPreviewContainer').classList.add('hidden');
         }
 
         function toggleBottomSheet() {
             const sheet = document.getElementById('bottomSheet');
-            const icon = document.getElementById('sheetToggleIcon');
+            const chevron = document.getElementById('sheetChevron');
             sheet.classList.toggle('collapsed');
-            icon.innerText = sheet.classList.contains('collapsed') ? '▲' : '▼';
+            chevron.innerText = sheet.classList.contains('collapsed') ? '▲' : '▼';
+        }
+
+        function triggerAddReport() {
+            tempMarkerLocation = map.getCenter();
+            openAddReportModal();
         }
 
         function openAddReportModal() {
-            if (!selectedLocation) {
-                selectedLocation = map.getCenter();
-            }
-            document.getElementById('addReportModal').style.display = 'flex';
+            editingReportId = null;
+            document.getElementById('modalTitle').innerText = "අලි සිටින ස්ථානයක් වාර්තා කරන්න";
+            document.getElementById('elephantCount').value = "1";
+            document.getElementById('reportDesc').value = "";
+            removePhoto();
+            document.getElementById('addReportModal').classList.remove('hidden');
         }
 
         function closeAddReportModal() {
-            document.getElementById('addReportModal').style.display = 'none';
+            document.getElementById('addReportModal').classList.add('hidden');
         }
 
-        // Elephant Icon with NO background or border
+        // Pure Elephant Marker without background or circle outline
         function createPureElephantIcon() {
             return L.divIcon({
-                className: 'pure-elephant-icon',
+                className: 'pure-elephant-marker',
                 html: '🐘',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16],
-                popupAnchor: [0, -16]
+                iconSize: [34, 34],
+                iconAnchor: [17, 17],
+                popupAnchor: [0, -17]
             });
         }
 
-        function submitReport() {
+        function saveReport() {
             const count = document.getElementById('elephantCount').value || 1;
             const desc = document.getElementById('reportDesc').value.trim();
-            const photoFile = document.getElementById('photoInput').files[0];
 
-            if (photoFile) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    createAndSaveReport(count, desc, e.target.result);
-                };
-                reader.readAsDataURL(photoFile);
+            if (editingReportId) {
+                // Update existing report
+                const report = reports.find(r => r.id === editingReportId);
+                if (report) {
+                    report.count = count;
+                    report.desc = desc;
+                    if (selectedPhotoData) report.photo = selectedPhotoData;
+                    report.timestamp = Date.now(); // Reset 30-min timer on edit
+                    updateMarkerPopup(report);
+                }
+                showToast("වාර්තාව සංස්කරණය කරන ලදී.");
             } else {
-                createAndSaveReport(count, desc, null);
+                // Create new report
+                const now = new Date();
+                const report = {
+                    id: 'rep_' + Date.now(),
+                    user: currentUser,
+                    lat: tempMarkerLocation.lat,
+                    lng: tempMarkerLocation.lng,
+                    count: count,
+                    desc: desc,
+                    photo: selectedPhotoData,
+                    timeDisplay: now.getDate() + ", " + now.getHours().toString().padStart(2, '0') + "." + now.getMinutes().toString().padStart(2, '0'),
+                    timestamp: Date.now(),
+                    comments: []
+                };
+
+                reports.push(report);
+                renderReportMarker(report);
+                showToast("අලුත් වාර්තාවක් සිතියමට එකතු විය!");
             }
-        }
 
-        function createAndSaveReport(count, desc, photoData) {
-            const now = new Date();
-            const report = {
-                id: 'rep_' + Date.now(),
-                user: currentUser,
-                lat: selectedLocation.lat,
-                lng: selectedLocation.lng,
-                count: count,
-                desc: desc,
-                photo: photoData,
-                dateStr: now.toLocaleDateString('si-LK'),
-                timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                timestamp: Date.now(),
-                comments: []
-            };
-
-            reports.push(report);
             saveReportsToStorage();
-            renderReportMarker(report);
             updateReportsUI();
             closeAddReportModal();
-
-            // Clear inputs
-            document.getElementById('reportDesc').value = '';
-            document.getElementById('photoInput').value = '';
         }
 
         function renderReportMarker(report) {
             const marker = L.marker([report.lat, report.lng], { icon: createPureElephantIcon() }).addTo(map);
             report.marker = marker;
-
-            const popupContent = document.createElement('div');
-            popupContent.className = 'popup-card';
-            updatePopupContent(popupContent, report);
-
-            marker.bindPopup(popupContent);
+            updateMarkerPopup(report);
         }
 
-        function updatePopupContent(container, report) {
-            const minsAgo = Math.floor((Date.now() - report.timestamp) / 60000);
-            
-            let photoHTML = report.photo ? `<img src="${report.photo}" class="popup-img" alt=" Elephant Photo" />` : '';
-            
-            let commentsHTML = report.comments.map(c => `
-                <div class="comment-box">
-                    <span class="comment-author">${escapeHtml(c.user)}:</span> ${escapeHtml(c.text)}
+        function updateMarkerPopup(report) {
+            const popupDiv = document.createElement('div');
+            buildPopupHTML(popupDiv, report);
+            report.marker.bindPopup(popupDiv);
+        }
+
+        function buildPopupHTML(container, report) {
+            let photoHTML = report.photo 
+                ? `<div class="mt-2"><img src="${report.photo}" class="w-full h-28 object-cover rounded-xl border border-gray-200 shadow-sm" alt="Elephant photo"></div>` 
+                : '';
+
+            let commentsListHTML = report.comments.map(c => `
+                <div class="bg-gray-100 p-1.5 px-2.5 rounded-lg text-[11px] leading-tight">
+                    <span class="font-bold text-blue-700">${escapeHtml(c.user)}:</span> 
+                    <span class="text-gray-800">${escapeHtml(c.text)}</span>
                 </div>
             `).join('');
 
             container.innerHTML = `
-                <div>
-                    <h4 style="color:#2e7d32; margin-bottom:2px;">🐘 අලින් ගණන: ${report.count}</h4>
-                    <p style="font-size:0.8rem; color:#444;"><strong>වාර්තා කළේ:</strong> ${escapeHtml(report.user)}</p>
-                    <p style="font-size:0.78rem; color:#666;"><strong>දිනය/වේලාව:</strong> ${report.dateStr} (${report.timeStr})</p>
-                    <p style="font-size:0.8rem; color:#333; margin-top:2px;"><strong>විස්තරය:</strong> ${escapeHtml(report.desc || 'නැත')}</p>
-                    ${photoHTML}
-                    <p style="font-size:0.75rem; color:#e53935; margin-top:3px;">මිනිත්තු ${minsAgo} කට පෙර (විනාඩි 30න් මැකී යයි)</p>
-                    
-                    <div class="popup-comments-container">
-                        ${commentsHTML || '<p style="font-size:0.78rem; color:#888;">කමෙන්ට් නැත.</p>'}
+                <div class="space-y-2">
+                    <div class="flex justify-between items-start border-b pb-1.5">
+                        <span class="font-bold text-emerald-800 text-sm">${escapeHtml(report.user)}</span>
+                        <span class="text-[10px] text-gray-500 font-medium">${report.timeDisplay}</span>
                     </div>
 
-                    <div style="display:flex; gap:4px; margin-top:4px;">
-                        <input type="text" id="comment_input_${report.id}" placeholder="කමෙන්ට් එකක් ලියන්න..." style="flex:1; padding:4px; font-size:0.78rem; border:1px solid #ccc; border-radius:4px;" />
-                        <button onclick="addComment('${report.id}')" style="background:#2e7d32; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.78rem; cursor:pointer;">යවන්න</button>
+                    <div class="text-xs space-y-1 text-gray-700">
+                        <div class="flex items-center gap-1">
+                            <span class="font-semibold text-gray-900">අලි ගණන:</span>
+                            <span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded text-[11px]">${report.count}</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold text-gray-900">දිශාව / විස්තරය:</span>
+                            <p class="text-gray-600 mt-0.5 text-[11px] leading-snug">${escapeHtml(report.desc || 'විස්තර ලබා දී නොමැත')}</p>
+                        </div>
+                    </div>
+
+                    ${photoHTML}
+
+                    <!-- Scrollable Comments Section -->
+                    <div class="pt-1 border-t border-gray-100">
+                        <span class="text-[10px] font-bold text-gray-500 block mb-1">අදහස් දැක්වීම් (Comments):</span>
+                        <div class="max-h-24 overflow-y-auto space-y-1 custom-scrollbar pr-1">
+                            ${commentsListHTML || '<p class="text-[10px] text-gray-400 italic">අදහස් කිසිවක් නැත.</p>'}
+                        </div>
+
+                        <!-- Add Comment Input -->
+                        <div class="flex gap-1 mt-2">
+                            <input type="text" id="cmt_input_${report.id}" placeholder="අදහසක් ලියන්න..." class="flex-1 px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-[11px] outline-none">
+                            <button onclick="addComment('${report.id}')" class="bg-emerald-600 text-white font-bold px-2 py-1 rounded-lg text-[10px] hover:bg-emerald-700">යවන්න</button>
+                        </div>
+                    </div>
+
+                    <!-- Action Edit & Delete Buttons -->
+                    <div class="flex gap-2 pt-2 border-t border-gray-100">
+                        <button onclick="openEditModal('${report.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-1 rounded-lg text-[11px] flex items-center justify-center gap-1">
+                            ✏️ වෙනස්
+                        </button>
+                        <button onclick="deleteReport('${report.id}')" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-1 rounded-lg text-[11px] flex items-center justify-center gap-1">
+                            🗑️ මකන්න
+                        </button>
                     </div>
                 </div>
             `;
@@ -464,65 +516,109 @@
 
         function addComment(reportId) {
             const report = reports.find(r => r.id === reportId);
-            const input = document.getElementById(`comment_input_${reportId}`);
+            const input = document.getElementById(`cmt_input_${reportId}`);
+
             if (report && input && input.value.trim()) {
                 report.comments.push({
                     user: currentUser,
                     text: input.value.trim(),
                     time: Date.now()
                 });
-                // Reset 30-min expiration timer on comment/modify
+
+                // Reset the 30 minute TTL timer when updated
                 report.timestamp = Date.now();
                 saveReportsToStorage();
-                
-                const popup = report.marker.getPopup();
-                const container = popup.getContent();
-                updatePopupContent(container, report);
+
+                updateMarkerPopup(report);
                 updateReportsUI();
+                showToast("අදහස එක් කරන ලදී.");
+            }
+        }
+
+        function openEditModal(reportId) {
+            const report = reports.find(r => r.id === reportId);
+            if (!report) return;
+
+            editingReportId = report.id;
+            document.getElementById('modalTitle').innerText = "වාර්තාව වෙනස් කරන්න";
+            document.getElementById('elephantCount').value = report.count;
+            document.getElementById('reportDesc').value = report.desc;
+
+            if (report.photo) {
+                selectedPhotoData = report.photo;
+                document.getElementById('photoPreviewImg').src = report.photo;
+                document.getElementById('photoPreviewContainer').classList.remove('hidden');
+            } else {
+                removePhoto();
+            }
+
+            document.getElementById('addReportModal').classList.remove('hidden');
+        }
+
+        function deleteReport(reportId) {
+            const idx = reports.findIndex(r => r.id === reportId);
+            if (idx !== -1) {
+                if (reports[idx].marker) {
+                    map.removeLayer(reports[idx].marker);
+                }
+                reports.splice(idx, 1);
+                saveReportsToStorage();
+                updateReportsUI();
+                showToast("වාර්තාව මකා දමන ලදී.");
             }
         }
 
         function cleanExpiredReports() {
             const now = Date.now();
-            const expiryLimit = 30 * 60 * 1000; // 30 minutes
-            const initialLength = reports.length;
+            const expiryLimit = 30 * 60 * 1000; // 30 mins
+            let removedAny = false;
 
-            reports = reports.filter(report => {
-                const isExpired = (now - report.timestamp) > expiryLimit;
-                if (isExpired && report.marker) {
-                    map.removeLayer(report.marker);
+            reports = reports.filter(r => {
+                const isExpired = (now - r.timestamp) > expiryLimit;
+                if (isExpired && r.marker) {
+                    map.removeLayer(r.marker);
+                    removedAny = true;
                 }
                 return !isExpired;
             });
 
-            if (reports.length !== initialLength) {
+            if (removedAny) {
                 saveReportsToStorage();
                 updateReportsUI();
             }
         }
 
         function updateReportsUI() {
-            document.getElementById('reportCount').innerText = reports.length;
-            const container = document.getElementById('reportsContainer');
+            document.getElementById('reportsCountBadge').innerText = reports.length;
+            const container = document.getElementById('reportsList');
 
             if (reports.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #777; padding: 10px;">මෑත කාලීන වාර්තා කිසිවක් නැත.</p>';
+                container.innerHTML = '<div class="text-center text-gray-400 py-6 text-sm">මෑත කාලීන වාර්තා කිසිවක් නොමැත.</div>';
                 return;
             }
 
             container.innerHTML = reports.map(r => {
                 const minsAgo = Math.floor((Date.now() - r.timestamp) / 60000);
                 return `
-                    <div class="report-item" onclick="focusOnReport('${r.id}')" style="cursor:pointer;">
-                        <span style="font-weight:bold; color:#2e7d32;">🐘 ${escapeHtml(r.user)}</span>
-                        <span style="font-size:0.75rem; color:#888; float:right;">මිනිත්තු ${minsAgo} කට පෙර</span>
-                        <p style="font-size:0.85rem; margin-top:2px;">අලින් ගණන: ${r.count} | ${escapeHtml(r.desc)}</p>
+                    <div onclick="flyToReport('${r.id}')" class="bg-[#2c2c2e] hover:bg-[#3a3a3c] p-3 rounded-2xl cursor-pointer transition-all border border-gray-800 flex justify-between items-center">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-white text-xs">${escapeHtml(r.user)}</span>
+                                <span class="text-[10px] text-gray-400">(${r.timeDisplay})</span>
+                            </div>
+                            <p class="text-xs text-gray-300 font-medium">අලි ගණන: ${r.count} | ${escapeHtml(r.desc || 'විස්තර නැත')}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] bg-red-900/60 text-red-300 border border-red-700/50 px-2 py-0.5 rounded-full">
+                                මිනි. ${minsAgo} කට පෙර
+                            </span>
+                        </div>
                     </div>
                 `;
             }).join('');
         }
 
-        function focusOnReport(id) {
+        function flyToReport(id) {
             const report = reports.find(r => r.id === id);
             if (report) {
                 map.setView([report.lat, report.lng], 15);
@@ -540,16 +636,15 @@
                 count: r.count,
                 desc: r.desc,
                 photo: r.photo,
-                dateStr: r.dateStr,
-                timeStr: r.timeStr,
+                timeDisplay: r.timeDisplay,
                 timestamp: r.timestamp,
                 comments: r.comments
             }));
-            localStorage.setItem('elephant_reports', JSON.stringify(serializable));
+            localStorage.setItem('elephant_reports_data', JSON.stringify(serializable));
         }
 
         function loadReportsFromStorage() {
-            const data = localStorage.getItem('elephant_reports');
+            const data = localStorage.getItem('elephant_reports_data');
             if (data) {
                 try {
                     const loaded = JSON.parse(data);
@@ -562,10 +657,19 @@
                         }
                     });
                     updateReportsUI();
-                } catch(e) {
-                    console.error("Error loading reports:", e);
+                } catch (e) {
+                    console.error("Error parsing reports:", e);
                 }
             }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
         }
 
         function escapeHtml(text) {
@@ -579,3 +683,4 @@
     </script>
 </body>
 </html>
+```
