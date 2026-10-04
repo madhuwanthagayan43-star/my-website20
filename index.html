@@ -60,6 +60,11 @@
         .leaflet-popup-content-wrapper { border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); padding: 0; overflow: hidden; }
         .leaflet-popup-content { margin: 0; width: 220px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+
+        /* Bottom Sheet Collapsed State */
+        .sheet-collapsed {
+            transform: translateY(calc(100% - 56px)) !important;
+        }
     </style>
 </head>
 <body class="antialiased text-gray-800 font-sans h-screen w-screen flex flex-col">
@@ -111,14 +116,21 @@
             </button>
         </div>
 
-        <!-- Recent Reports Bottom Sheet -->
-        <div class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col h-[35vh] min-h-[250px] max-h-[400px]">
-            <div class="w-14 h-1.5 bg-gray-300 rounded-full mx-auto mt-4 mb-3"></div>
+        <!-- Recent Reports Bottom Sheet (Collapsible) -->
+        <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col h-[35vh] min-h-[250px] max-h-[400px] transition-transform duration-300 ease-in-out transform translate-y-0">
+            <div class="w-full pt-3 pb-1 cursor-pointer select-none" onclick="toggleBottomSheet()">
+                <div class="w-14 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
+            </div>
             <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
-                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="toggleBottomSheet()">
                     <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
                 </h2>
-                <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
+                <div class="flex items-center gap-2">
+                    <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
+                    <button onclick="toggleBottomSheet()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="පහළට / ඉහළට">
+                        <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                </div>
             </div>
             <!-- Report List -->
             <div id="reportsListContainer" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 pb-6">
@@ -130,6 +142,7 @@
         </div>
     </div>
 
+    <!-- Report Modal -->
     <div id="reportModal" class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
@@ -176,7 +189,7 @@
                     <!-- Image Upload Section -->
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-camera text-green-600 w-5"></i> ඡායාරූපයක් (විකල්ප)</label>
-                        <div class="relative w-full h-36 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                        <div class="relative w-full h-36 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group cursor-pointer" onclick="openImageSourceModal()">
                             
                             <div id="uploadPrompt" class="text-center transition-opacity">
                                 <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-2 group-hover:text-green-500 transition-colors"></i>
@@ -189,7 +202,10 @@
                                 <span class="text-white text-sm font-bold bg-black/60 px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm"><i class="fa-solid fa-pen mr-2"></i>වෙනස් කරන්න</span>
                             </div>
                         </div>
-                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="processImage(event)">
+                        
+                        <!-- Hidden Camera & Gallery Inputs -->
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="processImage(event)">
+                        <input type="file" id="galleryInput" accept="image/*" class="hidden" onchange="processImage(event)">
                         
                         <div class="flex justify-end mt-2">
                             <button type="button" id="btnRemoveImg" class="hidden text-xs text-red-500 font-bold hover:bg-red-50 px-2 py-1 rounded transition" onclick="removeImage()">
@@ -235,6 +251,25 @@
         </div>
     </div>
 
+    <!-- Image Source Selection Modal (Camera vs Gallery) -->
+    <div id="imageSourceModal" class="hidden fixed inset-0 z-[160] flex items-end sm:items-center justify-center pointer-events-auto bg-gray-900/70 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center border border-gray-100">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">ඡායාරූපය ලබාගන්නා ආකාරය</h3>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button type="button" onclick="openCamera()" class="p-4 rounded-2xl bg-green-50 border-2 border-green-200 hover:bg-green-100 text-green-700 font-bold flex flex-col items-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-camera text-3xl"></i>
+                    <span class="text-xs">කැමරාවෙන්</span>
+                </button>
+                <button type="button" onclick="openGallery()" class="p-4 rounded-2xl bg-blue-50 border-2 border-blue-200 hover:bg-blue-100 text-blue-700 font-bold flex flex-col items-center gap-2 transition active:scale-95">
+                    <i class="fa-solid fa-images text-3xl"></i>
+                    <span class="text-xs">ගැලරියෙන්</span>
+                </button>
+            </div>
+            <button type="button" onclick="closeModal('imageSourceModal')" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition text-sm">අවලංගුයි</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center pointer-events-auto backdrop-blur-sm bg-gray-900/70 px-4 transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center">
             <div class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 border-4 border-white shadow-lg">
@@ -271,6 +306,36 @@
         let reportsData = [];
         let mapMarkers = {}; 
         let targetDeleteId = null;
+
+        // Bottom Sheet Toggle Functionality
+        window.toggleBottomSheet = () => {
+            const sheet = document.getElementById('bottomSheet');
+            const icon = document.getElementById('sheetToggleIcon');
+            const isCollapsed = sheet.classList.contains('sheet-collapsed');
+            
+            if (isCollapsed) {
+                sheet.classList.remove('sheet-collapsed');
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            } else {
+                sheet.classList.add('sheet-collapsed');
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            }
+        };
+
+        // Modal for Image Source Selection
+        window.openImageSourceModal = () => {
+            document.getElementById('imageSourceModal').classList.remove('hidden');
+        };
+
+        window.openCamera = () => {
+            closeModal('imageSourceModal');
+            document.getElementById('cameraInput').click();
+        };
+
+        window.openGallery = () => {
+            closeModal('imageSourceModal');
+            document.getElementById('galleryInput').click();
+        };
 
         window.showToast = (msg, type = 'success') => {
             const toast = document.createElement('div');
@@ -314,7 +379,6 @@
         function initializeMap() {
             map = L.map('map', { zoomControl: false }).setView([7.8731, 80.7718], 8);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
-            document.querySelector('.leaflet-bottom.leaflet-right').style.bottom = '36vh';
 
             // Satellite Layer (Esri)
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -382,7 +446,6 @@
 
                     snapshot.forEach(docSnap => {
                         const data = docSnap.data();
-                        // පැය භාගයක් (මිලි තත්පර 30 * 60 * 1000) ඉක්මවා ඇත්නම් ලැයිස්තුවට නොගනී
                         if (!data.timestamp || (currentTime - data.timestamp < thirtyMinutes)) {
                             temp.push({ id: docSnap.id, ...data });
                         }
@@ -591,7 +654,8 @@
         };
 
         window.removeImage = () => {
-            document.getElementById('fileInput').value = '';
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('galleryInput').value = '';
             document.getElementById('formImageBase64').value = '';
             document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreview').classList.add('hidden');
