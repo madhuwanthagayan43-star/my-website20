@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>අලි ඉරුපද්ධතිය - Elephant Tracking Map</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+        
+        /* Modal Popup styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 1rem;
+        }
+        .btn:hover {
+            background: #219150;
+        }
+
+        /* Bottom Sheet - Recent Reports */
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #ffffff;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+            max-height: 60vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .bottom-sheet.collapsed {
+            transform: translateY(calc(100% - 50px));
+        }
+        .drag-handle {
+            width: 100%;
+            padding: 12px 20px;
+            cursor: pointer;
+            background: #f8f9fa;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            user-select: none;
+        }
+        .drag-bar {
+            width: 40px;
+            height: 5px;
+            background: #ccc;
+            border-radius: 3px;
+            margin: 0 auto 6px auto;
+        }
+        .reports-list {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .report-item {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #fdfdfd;
+        }
+        .report-user {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .report-time {
+            font-size: 0.8rem;
+            color: #888;
+            float: right;
+        }
+
+        /* Elephant Custom Icon Style */
+        .elephant-marker {
+            background-color: #ffffff;
+            border: 2px solid #2e7d32;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            font-size: 20px;
+        }
+
+        /* Add Report Floating Button */
+        .fab-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 70px;
+            z-index: 1001;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 28px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Popup Comment Box */
+        .popup-comments {
+            max-height: 120px;
+            overflow-y: auto;
+            margin: 10px 0;
+            border-top: 1px solid #eee;
+            padding-top: 5px;
+        }
+        .comment-item {
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            background: #f1f3f4;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .comment-user {
+            font-weight: bold;
+            color: #1a73e8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Floating Button to Add Elephant Spot -->
+    <button class="fab-btn" onclick="openAddReportModal()" title="අලි සිටින තැනක් ලකුණු කරන්න">+</button>
+
+    <!-- Bottom Sheet: Recent Reports -->
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="drag-handle" onclick="toggleBottomSheet()">
+            <div>
+                <div class="drag-bar"></div>
+                🐘 මෑත කාලීන වාර්තා (<span id="reportCount">0</span>)
+            </div>
+            <span id="sheetToggleIcon">▼</span>
+        </div>
+        <div class="reports-list" id="reportsContainer">
+            <p style="text-align: center; color: #777;">වාර්තා කිසිවක් නැත.</p>
+        </div>
+    </div>
+
+    <!-- Username Prompt Modal -->
+    <div class="modal-overlay" id="usernameModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">සාදරයෙන් පිළිගනිමු!</div>
+            <p style="font-size: 0.9rem; margin-bottom: 12px; color: #666;">
+                කරුණාකර ඔබගේ නම (Username) ඇතුළත් කරන්න. (මෙම ෆෝන් එක සඳහා එක් වරක් පමණක් ඇතුළත් කිරීම ප්‍රමාණවත්ය)
+            </p>
+            <div class="input-group">
+                <input type="text" id="usernameInput" placeholder="ඔබගේ නම..." />
+            </div>
+            <button class="btn" onclick="saveUsername()">ඉදිරියට යන්න</button>
+        </div>
+    </div>
+
+    <!-- Add Elephant Report Modal -->
+    <div class="modal-overlay" id="addReportModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">අලි සිටින ස්ථානයක් වාර්තා කරන්න</div>
+            <div class="input-group">
+                <label>අලින් ගණන:</label>
+                <input type="number" id="elephantCount" value="1" min="1" />
+            </div>
+            <div class="input-group">
+                <label>විස්තරය / දිශාව:</label>
+                <textarea id="reportDesc" rows="3" placeholder="විස්තරයක් ඇතුළත් කරන්න..."></textarea>
+            </div>
+            <p style="font-size: 0.8rem; color: #e74c3c; margin-bottom: 10px;">
+                * මෙම වාර්තාව සහ ලකුණ විනාඩි 30කට පසුව ඉබේම මැකී යනු ඇත.
+            </p>
+            <button class="btn" onclick="submitReport()">ස්ථානය සිතියමේ ලකුණු කරන්න</button>
+            <button class="btn" style="background: #7f8c8d; margin-top: 8px;" onclick="closeAddReportModal()">අවලංගු කරන්න</button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let currentUser = "";
+        let reports = [];
+        let selectedLocation = null;
+
+        window.onload = function() {
+            currentUser = localStorage.getItem('elephant_app_username');
+            if (!currentUser) {
+                document.getElementById('usernameModal').style.display = 'flex';
+            }
+            initMap();
+            loadReportsFromStorage();
+            // Every 10 seconds check and remove reports older than 30 minutes
+            setInterval(cleanExpiredReports, 10000);
+        };
+
+        function saveUsername() {
+            const val = document.getElementById('usernameInput').value.trim();
+            if (val) {
+                currentUser = val;
+                localStorage.setItem('elephant_app_username', currentUser);
+                document.getElementById('usernameModal').style.display = 'none';
+            } else {
+                alert('කරුණාකර නමක් ඇතුළත් කරන්න.');
+            }
+        }
+
+        function initMap() {
+            // Sri Lanka Default View
+            map = L.map('map').setView([7.8731, 80.7718], 8);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                selectedLocation = e.latlng;
+                openAddReportModal();
+            });
+        }
+
+        function toggleBottomSheet() {
+            const sheet = document.getElementById('bottomSheet');
+            const icon = document.getElementById('sheetToggleIcon');
+            sheet.classList.toggle('collapsed');
+            icon.innerText = sheet.classList.contains('collapsed') ? '▲' : '▼';
+        }
+
+        function openAddReportModal() {
+            if (!selectedLocation) {
+                selectedLocation = map.getCenter();
+            }
+            document.getElementById('addReportModal').style.display = 'flex';
+        }
+
+        function closeAddReportModal() {
+            document.getElementById('addReportModal').style.display = 'none';
+        }
+
+        function createElephantIcon() {
+            return L.divIcon({
+                className: 'elephant-marker',
+                html: '🐘',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            });
+        }
+
+        function submitReport() {
+            const count = document.getElementById('elephantCount').value || 1;
+            const desc = document.getElementById('reportDesc').value.trim();
+
+            const report = {
+                id: 'rep_' + Date.now(),
+                user: currentUser,
+                lat: selectedLocation.lat,
+                lng: selectedLocation.lng,
+                count: count,
+                desc: desc,
+                timestamp: Date.now(),
+                comments: []
+            };
+
+            reports.push(report);
+            saveReportsToStorage();
+            renderReportMarker(report);
+            updateReportsUI();
+            closeAddReportModal();
+            document.getElementById('reportDesc').value = '';
+        }
+
+        function renderReportMarker(report) {
+            const marker = L.marker([report.lat, report.lng], { icon: createElephantIcon() }).addTo(map);
+            report.marker = marker;
+
+            const popupContent = document.createElement('div');
+            updatePopupContent(popupContent, report);
+
+            marker.bindPopup(popupContent);
+        }
+
+        function updatePopupContent(container, report) {
+            const timeAgo = Math.floor((Date.now() - report.timestamp) / 60000);
+            let commentsHTML = report.comments.map(c => `
+                <div class="comment-item">
+                    <span class="comment-user">${escapeHtml(c.user)}:</span> ${escapeHtml(c.text)}
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div style="min-width: 200px;">
+                    <h4 style="color:#2e7d32; margin-bottom:4px;">🐘 අලි ගණන: ${report.count}</h4>
+                    <p style="font-size:0.85rem; color:#555;"><strong>වාර්තා කළේ:</strong> ${escapeHtml(report.user)}</p>
+                    <p style="font-size:0.85rem; color:#555;"><strong>විස්තරය:</strong> ${escapeHtml(report.desc || 'නැත')}</p>
+                    <p style="font-size:0.75rem; color:#888;">මිනිත්තු ${timeAgo} කට පෙර</p>
+                    <hr style="margin: 8px 0; border:0; border-top:1px solid #ddd;" />
+                    <div class="popup-comments">${commentsHTML || '<p style="font-size:0.8rem; color:#888;">කමෙන්ට් නැත.</p>'}</div>
+                    <div style="display:flex; gap:4px; margin-top:6px;">
+                        <input type="text" id="comment_input_${report.id}" placeholder="කමෙන්ට් එකක් ලියන්න..." style="flex:1; padding:4px; font-size:0.8rem; border:1px solid #ccc; border-radius:4px;" />
+                        <button onclick="addComment('${report.id}')" style="background:#27ae60; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.8rem; cursor:pointer;">යවන්න</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addComment(reportId) {
+            const report = reports.find(r => r.id === reportId);
+            const input = document.getElementById(`comment_input_${reportId}`);
+            if (report && input && input.value.trim()) {
+                report.comments.push({
+                    user: currentUser,
+                    text: input.value.trim(),
+                    time: Date.now()
+                });
+                // Reset the 30-minute expiration timer on comment/modify
+                report.timestamp = Date.now();
+                saveReportsToStorage();
+                
+                const popup = report.marker.getPopup();
+                const container = popup.getContent();
+                updatePopupContent(container, report);
+                updateReportsUI();
+            }
+        }
+
+        function cleanExpiredReports() {
+            const now = Date.now();
+            const expiryLimit = 30 * 60 * 1000; // 30 mins
+            const initialCount = reports.length;
+
+            reports = reports.filter(report => {
+                const isExpired = (now - report.timestamp) > expiryLimit;
+                if (isExpired && report.marker) {
+                    map.removeLayer(report.marker);
+                }
+                return !isExpired;
+            });
+
+            if (reports.length !== initialCount) {
+                saveReportsToStorage();
+                updateReportsUI();
+            }
+        }
+
+        function updateReportsUI() {
+            document.getElementById('reportCount').innerText = reports.length;
+            const container = document.getElementById('reportsContainer');
+
+            if (reports.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #777;">මෑත කාලීන වාර්තා කිසිවක් නැත.</p>';
+                return;
+            }
+
+            container.innerHTML = reports.map(r => {
+                const minsAgo = Math.floor((Date.now() - r.timestamp) / 60000);
+                return `
+                    <div class="report-item" onclick="focusOnReport('${r.id}')" style="cursor:pointer;">
+                        <span class="report-user">🐘 ${escapeHtml(r.user)}</span>
+                        <span class="report-time">මිනිත්තු ${minsAgo} කට පෙර</span>
+                        <p style="margin-top: 4px; font-size: 0.9rem;">අලි ගණන: ${r.count} | ${escapeHtml(r.desc)}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function focusOnReport(id) {
+            const report = reports.find(r => r.id === id);
+            if (report) {
+                map.setView([report.lat, report.lng], 14);
+                report.marker.openPopup();
+                toggleBottomSheet();
+            }
+        }
+
+        function saveReportsToStorage() {
+            const serializable = reports.map(r => ({
+                id: r.id,
+                user: r.user,
+                lat: r.lat,
+                lng: r.lng,
+                count: r.count,
+                desc: r.desc,
+                timestamp: r.timestamp,
+                comments: r.comments
+            }));
+            localStorage.setItem('elephant_reports', JSON.stringify(serializable));
+        }
+
+        function loadReportsFromStorage() {
+            const data = localStorage.getItem('elephant_reports');
+            if (data) {
+                try {
+                    const loaded = JSON.parse(data);
+                    const now = Date.now();
+                    loaded.forEach(r => {
+                        if (now - r.timestamp <= 30 * 60 * 1000) {
+                            r.comments = r.comments || [];
+                            reports.push(r);
+                            renderReportMarker(r);
+                        }
+                    });
+                    updateReportsUI();
+                } catch(e) {
+                    console.error("Error loading reports", e);
+                }
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;")
+                       .replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;")
+                       .replace(/"/g, "&quot;")
+                       .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
