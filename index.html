@@ -1,4 +1,3 @@
-දෝෂ (Errors) තිරය මතම පෙන්වන ලෙස වෙනස් කරන ලද සම්පූර්ණ කේතය මෙන්න.
 <!DOCTYPE html>
 <html lang="si">
 <head>
@@ -253,32 +252,17 @@
     <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global error handler to catch any uncaught errors and show them on the screen
-        window.onerror = function(message, source, lineno, colno, error) {
-            alert("Global Error: " + message + " at " + source + ":" + lineno);
-        };
-        
-        // Similarly handle unhandled promise rejections
-        window.onunhandledrejection = function(event) {
-            alert("Unhandled Promise Rejection: " + event.reason);
-        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'elephant-watch-live-sl';
+        let firebaseConfig = { projectId: "demo" };
+        try {
+            if (typeof __firebase_config !== 'undefined') firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) { console.warn("Firebase config parse error, using demo."); }
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
-            authDomain: "elipent-4e589.firebaseapp.com",
-            projectId: "elipent-4e589",
-            storageBucket: "elipent-4e589.firebasestorage.app",
-            messagingSenderId: "363464948428",
-            appId: "1:363464948428:web:050f60abe62cdda9eee069",
-            measurementId: "G-B2BVZ142HR"
-        };
-
-        let app, db, auth, analytics, currentUser;
+        let app, db, auth, currentUser;
         let map, userMarker, tempMarker;
         let reportsData = [];
         let mapMarkers = {}; 
@@ -379,20 +363,21 @@
 
         async function connectFirebase() {
             try {
-                if (!firebaseConfig.apiKey) {
-                    throw new Error("Firebase config is missing API key.");
+                if (firebaseConfig.projectId === "demo") {
+                    renderEmptyState("දත්ත ගබඩාව (Demo Mode)"); return;
                 }
-
                 app = initializeApp(firebaseConfig);
-                analytics = getAnalytics(app);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                await signInAnonymously(auth);
+                const customToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (customToken) await signInWithCustomToken(auth, customToken);
+                else await signInAnonymously(auth);
+
                 currentUser = auth.currentUser;
                 if (!currentUser) throw new Error("Auth failed");
                 
-                const reportsRef = collection(db, 'elephant_reports');
+                const reportsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
                 let isFirstLoad = true;
 
                 onSnapshot(query(reportsRef), (snapshot) => {
@@ -412,11 +397,11 @@
                     refreshDataUI();
                 }, (error) => {
                     console.error("Firestore error:", error);
-                    alert("Firestore error: " + error.message);
+                    showToast("දත්ත ලබා ගැනීමේ දෝෂයකි.", "error");
                 });
             } catch (err) {
                 console.error("Setup error:", err);
-                alert("Setup error: " + err.message);
+                renderEmptyState("පද්ධති දෝෂයකි. පිටුව රිෆ්‍රෙෂ් කරන්න.");
             }
         }
 
@@ -571,10 +556,7 @@
         window.processImage = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) {
-                alert("ඡායාරූපයක් පමණක් තෝරන්න");
-                return;
-            }
+            if (!file.type.startsWith('image/')) return showToast("ඡායාරූපයක් පමණක් තෝරන්න", "error");
 
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -590,9 +572,6 @@
                     showImagePreview(canvas.toDataURL('image/jpeg', 0.6));
                 };
                 img.src = event.target.result;
-            };
-            reader.onerror = (err) => {
-                alert("Image reading error: " + err.message);
             };
             reader.readAsDataURL(file);
         };
@@ -618,10 +597,7 @@
 
         document.getElementById('elephantForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!db || !currentUser) {
-                alert("Database or User is not ready.");
-                return;
-            }
+            if (!db || !currentUser) return;
 
             const btn = document.getElementById('btnSubmit');
             const origLabel = document.getElementById('submitLabel').innerText;
@@ -635,26 +611,26 @@
                     count: parseInt(document.getElementById('formCount').value) || 1,
                     direction: document.getElementById('formDirection').value.trim(),
                     risk: document.querySelector('input[name="riskLvl"]:checked').value,
-                    lat: parseFloat(document.getElementById('formLat__value'),
+                    lat: parseFloat(document.getElementById('formLat').value),
                     lng: parseFloat(document.getElementById('formLng').value),
                     imgData: document.getElementById('formImageBase64').value,
-                    userId: currentUser.uid || "anonymous_user",
-                    timestamp: Date.now()
+                    userId: currentUser.uid
                 };
 
-                const collRef = collection(db, 'elephant_reports');
+                const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
 
                 if (id) {
                     await updateDoc(doc(collRef, id), payload);
                     showToast("වාර්තාව සාර්ථකව වෙනස් කරන ලදී.");
                 } else {
+                    payload.timestamp = Date.now();
                     await addDoc(collRef, payload);
                     showToast("අනතුරු ඇඟවීම සාර්ථකව පද්ධතියට එක් කළා.");
                 }
                 closeModal('reportModal');
             } catch (err) {
                 console.error("Save failed:", err);
-                alert("වාර්තාව සුරැකීමේ දෝෂයක්: " + err.message);
+                showToast("සුරැකීමේදී දෝෂයක් ඇතිවිය.", "error");
             } finally {
                 btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">${origLabel}</span>`;
                 btn.disabled = false;
@@ -668,12 +644,12 @@
             btn.disabled = true;
 
             try {
-                await deleteDoc(doc(db, 'elephant_reports', targetDeleteId));
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reports', targetDeleteId));
                 showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
                 closeModal('deleteModal');
             } catch (err) {
                 console.error("Delete failed:", err);
-                alert("මකා දැමීමේ දෝෂයකි: " + err.message);
+                showToast("මකා දැමීම අසාර්ථකයි.", "error");
             } finally {
                 btn.innerHTML = `ඔව්, මකන්න`;
                 btn.disabled = false;
@@ -687,4 +663,3 @@
     </script>
 </body>
 </html>
-
