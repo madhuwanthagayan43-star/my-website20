@@ -256,7 +256,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
-        // ඔබේ Firebase වින්‍යාසය (Configuration)
         const firebaseConfig = {
             apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
             authDomain: "elipent-4e589.firebaseapp.com",
@@ -327,7 +326,6 @@
                 subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane'
             }).addTo(map);
 
-            // සිතියම මත ටච් / ක්ලික් කරන විට ඩොට් එකක් වෙනුවට අලියෙකුගේ රූපයක් (Elephant Icon) පෙන්වීම
             map.on('click', (e) => {
                 if(tempMarker) map.removeLayer(tempMarker);
                 const icon = L.divIcon({
@@ -379,7 +377,17 @@
 
                 onSnapshot(query(reportsRef), (snapshot) => {
                     let temp = [];
-                    snapshot.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
+                    const currentTime = Date.now();
+                    const thirtyMinutes = 30 * 60 * 1000;
+
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        // පැය භාගයක් (මිලි තත්පර 30 * 60 * 1000) ඉක්මවා ඇත්නම් ලැයිස්තුවට නොගනී
+                        if (!data.timestamp || (currentTime - data.timestamp < thirtyMinutes)) {
+                            temp.push({ id: docSnap.id, ...data });
+                        }
+                    });
+
                     reportsData = temp.sort((a, b) => b.timestamp - a.timestamp);
 
                     if (!isFirstLoad) {
@@ -422,7 +430,7 @@
             setTimeout(() => banner.classList.add('hidden'), 500);
         };
 
-        function renderEmptyState(msg = "කිසිදු වාර්තාවක් නොමැත.") {
+        function renderEmptyState(msg = "මෑත කාලීන වාර්තා නොමැත.") {
             document.getElementById('reportsListContainer').innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full text-gray-400 py-10">
                     <i class="fa-solid fa-folder-open text-5xl mb-4 opacity-40"></i>
