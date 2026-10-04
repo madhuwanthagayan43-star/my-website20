@@ -1,3 +1,4 @@
+දෝෂ (Errors) තිරය මතම පෙන්වන ලෙස වෙනස් කරන ලද සම්පූර්ණ කේතය මෙන්න.
 <!DOCTYPE html>
 <html lang="si">
 <head>
@@ -257,6 +258,16 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
+        // Global error handler to catch any uncaught errors and show them on the screen
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("Global Error: " + message + " at " + source + ":" + lineno);
+        };
+        
+        // Similarly handle unhandled promise rejections
+        window.onunhandledrejection = function(event) {
+            alert("Unhandled Promise Rejection: " + event.reason);
+        };
+
         const firebaseConfig = {
             apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
             authDomain: "elipent-4e589.firebaseapp.com",
@@ -368,6 +379,10 @@
 
         async function connectFirebase() {
             try {
+                if (!firebaseConfig.apiKey) {
+                    throw new Error("Firebase config is missing API key.");
+                }
+
                 app = initializeApp(firebaseConfig);
                 analytics = getAnalytics(app);
                 auth = getAuth(app);
@@ -397,11 +412,11 @@
                     refreshDataUI();
                 }, (error) => {
                     console.error("Firestore error:", error);
-                    showToast("දත්ත ලබා ගැනීමේ දෝෂයකි.", "error");
+                    alert("Firestore error: " + error.message);
                 });
             } catch (err) {
                 console.error("Setup error:", err);
-                showToast("පද්ධති දෝෂයකි. පිටුව රිෆ්‍රෙෂ් කරන්න.", "error");
+                alert("Setup error: " + err.message);
             }
         }
 
@@ -556,7 +571,10 @@
         window.processImage = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) return showToast("ඡායාරූපයක් පමණක් තෝරන්න", "error");
+            if (!file.type.startsWith('image/')) {
+                alert("ඡායාරූපයක් පමණක් තෝරන්න");
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -572,6 +590,9 @@
                     showImagePreview(canvas.toDataURL('image/jpeg', 0.6));
                 };
                 img.src = event.target.result;
+            };
+            reader.onerror = (err) => {
+                alert("Image reading error: " + err.message);
             };
             reader.readAsDataURL(file);
         };
@@ -597,7 +618,10 @@
 
         document.getElementById('elephantForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!db || !currentUser) return;
+            if (!db || !currentUser) {
+                alert("Database or User is not ready.");
+                return;
+            }
 
             const btn = document.getElementById('btnSubmit');
             const origLabel = document.getElementById('submitLabel').innerText;
@@ -611,10 +635,11 @@
                     count: parseInt(document.getElementById('formCount').value) || 1,
                     direction: document.getElementById('formDirection').value.trim(),
                     risk: document.querySelector('input[name="riskLvl"]:checked').value,
-                    lat: parseFloat(document.getElementById('formLat').value),
+                    lat: parseFloat(document.getElementById('formLat__value'),
                     lng: parseFloat(document.getElementById('formLng').value),
                     imgData: document.getElementById('formImageBase64').value,
-                    userId: currentUser.uid
+                    userId: currentUser.uid || "anonymous_user",
+                    timestamp: Date.now()
                 };
 
                 const collRef = collection(db, 'elephant_reports');
@@ -623,14 +648,13 @@
                     await updateDoc(doc(collRef, id), payload);
                     showToast("වාර්තාව සාර්ථකව වෙනස් කරන ලදී.");
                 } else {
-                    payload.timestamp = Date.now();
                     await addDoc(collRef, payload);
                     showToast("අනතුරු ඇඟවීම සාර්ථකව පද්ධතියට එක් කළා.");
                 }
                 closeModal('reportModal');
             } catch (err) {
                 console.error("Save failed:", err);
-                showToast("සුරැකීමේදී දෝෂයක් ඇතිවිය.", "error");
+                alert("වාර්තාව සුරැකීමේ දෝෂයක්: " + err.message);
             } finally {
                 btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">${origLabel}</span>`;
                 btn.disabled = false;
@@ -649,7 +673,7 @@
                 closeModal('deleteModal');
             } catch (err) {
                 console.error("Delete failed:", err);
-                showToast("මකා දැමීම අසාර්ථකයි.", "error");
+                alert("මකා දැමීමේ දෝෂයකි: " + err.message);
             } finally {
                 btn.innerHTML = `ඔව්, මකන්න`;
                 btn.disabled = false;
@@ -663,3 +687,4 @@
     </script>
 </body>
 </html>
+
