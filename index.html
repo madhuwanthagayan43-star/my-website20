@@ -1,234 +1,153 @@
-```html
 <!DOCTYPE html>
-<html lang="en">
+<html lang="si">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with Interactive Popup & Bottom Sheet</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>මැප් සහ පොප්-අප් යෙදුම</title>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        #map { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 10; }
-        /* Custom scrollbar for bottom sheet */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* පොප්-අප් එක හරහා මැප් එක Drag කිරීමට හැකි වන සේ pointer-events සැකසීම */
+        .leaflet-popup {
+            pointer-events: none !important;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            pointer-events: auto !important;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .leaflet-container a.leaflet-popup-close-button {
+            pointer-events: auto !important;
+            color: #d9534f;
+        }
+
+        /* යටින් ඇති මෑත කාලීන වාර්තා Bottom Sheet එක */
+        #bottom-sheet {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #ffffff;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+            max-height: 60vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .sheet-header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .sheet-content {
+            padding: 15px 20px;
+            overflow-y: auto;
+            display: none;
+        }
+        #bottom-sheet.expanded .sheet-content {
+            display: block;
+        }
     </style>
 </head>
-<body class="bg-slate-100 overflow-hidden relative">
+<body>
 
+    <!-- සිතියම පෙන්වන දිස්ත්‍රික්කය -->
     <div id="map"></div>
 
-    <div class="absolute top-4 left-4 right-4 z-20 flex justify-between items-center pointer-events-none">
-        <div class="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg border border-slate-200 pointer-events-auto flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-500/30">
-                <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <div>
-                <h1 class="text-sm font-bold text-slate-800">අලි මුරුපද්‍යතිය</h1>
-                <p class="text-xs text-slate-500">සැටලයිට් සීමාව</p>
-            </div>
+    <!-- මෑත කාලීන වාර්තා Bottom Sheet එක -->
+    <div id="bottom-sheet">
+        <div class="sheet-header" onclick="toggleBottomSheet()">
+            <span>🕒 මෑත කාලීන වාර්තා</span>
+            <span id="toggle-icon">▲</span>
         </div>
-
-        <div class="flex items-center space-x-2 pointer-events-auto">
-            <button class="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg border border-slate-200 text-slate-700 font-medium text-sm flex items-center space-x-2 hover:bg-slate-50 active:scale-95 transition-all">
-                <i class="fa-solid fa-user text-emerald-600"></i>
-                <span>ගයාන්</span>
-            </button>
-            <button class="w-11 h-11 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition-all">
-                <i class="fa-solid fa-location-crosshairs text-emerald-600 text-lg"></i>
-            </button>
+        <div class="sheet-content">
+            <p><strong>ස්ථානය:</strong> සිරිපාලගම</p>
+            <p>දිනය: 2026/10/05 05:43 PM</p>
+            <p>අලි ගණන: 1</p>
         </div>
     </div>
 
-    <div id="bottomSheet" class="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-out flex flex-col max-h-[70vh]">
-        <!-- Sheet Handle & Header -->
-        <div id="sheetHeader" class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between cursor-pointer select-none">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                </div>
-                <span class="font-bold text-slate-800 text-sm">මෑත කාලීන වාර්තා</span>
-            </div>
-            <div class="flex items-center space-x-2">
-                <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">1</span>
-                <button id="sheetToggleBtn" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
-                    <i id="sheetToggleIcon" class="fa-solid fa-chevron-up text-xs"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Sheet Body / Recent reports list -->
-        <div id="sheetContent" class="p-4 overflow-y-auto no-scrollbar space-y-3">
-            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between hover:bg-slate-100/80 transition-colors cursor-pointer">
-                <div class="flex items-center space-x-3">
-                    <div class="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400 overflow-hidden">
-                        <i class="fa-regular fa-image text-xl"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center space-x-1">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                                <span>මූල්‍ය අවධානම්</span>
-                            </span>
-                            <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded">3m</span>
-                        </div>
-                        <h4 class="font-bold text-slate-800 text-sm mt-1">සිරිපාලමග</h4>
-                        <p class="text-xs text-slate-500 mt-0.5"><i class="fa-regular fa-clock mr-1"></i> 2026/10/05 05:43 PM &bull; <span class="text-slate-700 font-medium">ගයාන්</span></p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-1">
-                    <button class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                        <i class="fa-solid fa-pen text-xs"></i>
-                    </button>
-                    <button class="w-9 h-9 rounded-xl bg-slate-100 text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors">
-                        <i class="fa-solid fa-trash text-xs"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Leaflet Map centered in Sri Lanka
-            const map = L.map('map', {
-                zoomControl: false
-            }).setView([7.8731, 80.7718], 8);
+        // සිතියම ආරම්භ කිරීම (ශ්‍රී ලංකාව මධ්‍ය කරමින්)
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView([7.8731, 80.7718], 8);
 
-            // Add OpenStreetMap Tile Layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-            // Custom HTML marker icon
-            const customIcon = L.divIcon({
-                className: 'custom-map-marker',
-                html: '<div style="background-color: #ef4444; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><div style="background-color: white; width: 8px; height: 8px; border-radius: 50%;"></div></div>',
-                iconSize: [28, 28],
-                iconAnchor: [14, 14]
-            });
+        // සිතියම මත පොයින්ට් එකක් එක් කිරීම
+        const marker = L.marker([7.95, 80.85]).addTo(map);
 
-            // Marker location
-            const markerLocation = [7.2906, 80.6337];
-            const marker = L.marker(markerLocation, { icon: customIcon }).addTo(map);
-
-            // Custom Popup Content HTML
-            const popupContent = `
-                <div class="p-1 min-w-[260px] text-slate-800 font-sans">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2.5">
-                        <span class="bg-amber-100 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1">
-                            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
-                            <span>ස්ථානේ අවධානම්</span>
-                        </span>
-                        <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">6.4 <i class="fa-solid fa-star text-[10px]"></i></span>
-                    </div>
-
-                    <div class="space-y-2 text-xs">
-                        <div class="flex items-center justify-between text-slate-600">
-                            <span class="flex items-center space-x-1.5"><i class="fa-solid fa-user text-slate-400"></i><span>වාර්තාකරු:</span></span>
-                            <span class="font-bold text-slate-800">ගයාන්</span>
-                        </div>
-                        <div class="flex items-center justify-between text-slate-600">
-                            <span class="flex items-center space-x-1.5"><i class="fa-regular fa-calendar text-slate-400"></i><span>දිනය/වේලාව:</span></span>
-                            <span class="font-medium text-slate-800">2026/10/05 05:43 PM</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-3 pt-2.5 border-t border-slate-100 bg-amber-50/50 p-2.5 rounded-xl space-y-1.5">
-                        <div class="font-bold text-xs text-slate-800 flex items-center space-x-1.5">
-                            <i class="fa-solid fa-location-dot text-amber-600"></i>
-                            <span>ස්ථානයේ විස්තරය</span>
-                        </div>
-                        <p class="text-xs font-semibold text-slate-700">සිරිපාලමග</p>
-                        <p class="text-[11px] text-slate-600"><span class="font-bold text-slate-700">අලි ගණන:</span> 1</p>
-                    </div>
-
-                    <div class="mt-2.5 bg-emerald-50/70 p-2 rounded-xl text-[11px] text-emerald-900 flex items-start space-x-2">
-                        <i class="fa-solid fa-circle-info text-emerald-600 mt-0.5"></i>
-                        <span>මේ පිහිටීමෙන් එක්ස්පර්ට් 26 min අතරි ඇත. තව 7 min වලින් පිහිටීමෙන් මැදි වී යයි.</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mt-3">
-                        <button class="bg-sky-50 hover:bg-sky-100 text-sky-700 py-2 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                            <span>වෙනස්</span>
-                        </button>
-                        <button class="bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors">
-                            <i class="fa-solid fa-trash"></i>
-                            <span>මකන්න</span>
-                        </button>
-                    </div>
+        const popupContent = `
+            <div style="min-width: 200px;">
+                <h3 style="margin: 0 0 10px 0; color: #d9534f; font-size: 14px;">⚠️ ස්ථාන අවදානම්</h3>
+                <p style="margin: 5px 0;"><strong>වාර්තාකරු:</strong> ගයාන්</p>
+                <p style="margin: 5px 0;"><strong>දිනය/වේලාව:</strong> 2026/10/05 05:43 PM</p>
+                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                <p style="margin: 5px 0;"><strong>ස්ථානයේ විස්තරය:</strong><br>සිරිපාලගම</p>
+                <p style="margin: 5px 0;"><strong>අලි ගණන:</strong> 1</p>
+                <div style="margin-top: 10px; display: flex; gap: 5px;">
+                    <button style="flex: 1; padding: 6px; background: #f0f0f0; border: none; border-radius: 4px; cursor: pointer;">වෙනස්</button>
+                    <button style="flex: 1; padding: 6px; background: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer;">මකන්න</button>
                 </div>
-            `;
+            </div>
+        `;
 
-            // Bind Leaflet Popup with closeButton enabled
-            marker.bindPopup(popupContent, {
-                closeButton: true,
-                className: 'custom-leaflet-popup',
-                maxWidth: 320,
-                autoClose: false,
-                closeOnClick: false
-            });
+        marker.bindPopup(popupContent);
 
-            marker.openPopup();
-
-            // When popup opens, disable click propagation so users can drag the map underneath the popup card
-            marker.on('popupopen', (e) => {
-                const popupContainer = e.popup.getElement();
-                if (popupContainer) {
-                    L.DomEvent.disableClickPropagation(popupContainer);
-                    L.DomEvent.disableScrollPropagation(popupContainer);
-                }
-            });
-
-            const bottomSheet = document.getElementById('bottomSheet');
-            const sheetHeader = document.getElementById('sheetHeader');
-            const sheetToggleBtn = document.getElementById('sheetToggleBtn');
-            const sheetToggleIcon = document.getElementById('sheetToggleIcon');
-
-            let isExpanded = false;
-
-            function toggleBottomSheet(expand) {
-                isExpanded = expand !== undefined ? expand : !isExpanded;
-                if (isExpanded) {
-                    bottomSheet.style.transform = 'translateY(0)';
-                    sheetToggleIcon.className = 'fa-solid fa-chevron-down text-xs';
-                    // When bottom sheet is pulled up/expanded, dismiss/close the popup form
-                    if (marker.isPopupOpen()) {
-                        marker.closePopup();
-                    }
-                } else {
-                    bottomSheet.style.transform = 'translateY(calc(100% - 65px))';
-                    sheetToggleIcon.className = 'fa-solid fa-chevron-up text-xs';
-                }
+        // පොප්-අප් එක විවෘත වූ විට Click/Drag පාලනය කිරීම සඳහා
+        marker.on('popupopen', function(e) {
+            const popupContainer = e.popup.getElement();
+            if (popupContainer) {
+                // Leaflet මඟින් සිදුවන පෙරනිමි event වැළැක්වීම
+                L.DomEvent.disableClickPropagation(popupContainer);
+                L.DomEvent.disableScrollPropagation(popupContainer);
             }
-
-            // Initial sheet position (collapsed showing only header)
-            bottomSheet.style.transform = 'translateY(calc(100% - 65px))';
-            bottomSheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-
-            sheetHeader.addEventListener('click', () => {
-                toggleBottomSheet();
-            });
-
-            sheetToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleBottomSheet();
-            });
-
-            // Adjust map view to center nicely
-            setTimeout(() => {
-                map.setView(markerLocation, 12, { animate: true });
-            }, 300);
         });
+
+        // Bottom Sheet එක ඉහළට/පහළට හැසිරවීම සහ පොප්-අප් එක වැසීම
+        function toggleBottomSheet() {
+            const sheet = document.getElementById('bottom-sheet');
+            const icon = document.getElementById('toggle-icon');
+            sheet.classList.toggle('expanded');
+            
+            if (sheet.classList.contains('expanded')) {
+                icon.textContent = '▼';
+                // මෑත කාලීන වාර්තා ඉහළට ගත් විට පොප්-අප් එක වැසී යාමට
+                map.closePopup();
+            } else {
+                icon.textContent = '▲';
+            }
+        }
     </script>
 </body>
 </html>
-```
