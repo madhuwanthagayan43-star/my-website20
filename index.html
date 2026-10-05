@@ -340,7 +340,7 @@
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Format: අවුරුද්ද, මාසය, දිනය, පැය 12 ක්‍රමයට වේලාව සහ AM / PM
+        // Format: YYYY/MM/DD hh:mm AM/PM (වසර, මස, දින යන්න නොමැතිව)
         function formatDateTime12H(timestamp) {
             if (!timestamp) return '';
             const d = new Date(timestamp);
@@ -356,7 +356,7 @@
             hours = hours ? hours : 12; // 0 පැය 12 බවට
             const hoursStr = hours.toString().padStart(2, '0');
             
-            return `${year} වසර ${month} මස ${date} වෙනි දින ${hoursStr}:${minutes} ${ampm}`;
+            return `${year}/${month}/${date} ${hoursStr}:${minutes} ${ampm}`;
         }
 
         function getTimeMeta(timestamp) {
