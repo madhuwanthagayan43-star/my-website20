@@ -76,9 +76,9 @@
         }
 
         .sheet-fullscreen {
-            height: 100vh !important;
-            min-height: 100vh !important;
-            max-height: 100vh !important;
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            max-height: 100dvh !important;
             transform: translateY(0) !important;
             border-radius: 0 !important;
         }
@@ -103,7 +103,7 @@
         }
     </style>
 </head>
-<body class="antialiased text-gray-800 font-sans h-screen w-screen flex flex-col">
+<body class="antialiased text-gray-800 font-sans h-[100dvh] w-screen flex flex-col">
 
     <div id="map"></div>
 
@@ -215,7 +215,7 @@
     <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100vh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
             
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
@@ -551,13 +551,13 @@
             const icon = document.getElementById('fullscreenIcon');
             const header = document.getElementById('mainHeader');
 
-            if (container.classList.contains('max-h-[calc(100vh-20px)]')) {
-                container.classList.remove('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+            if (container.classList.contains('max-h-[calc(100dvh-20px)]')) {
+                container.classList.remove('max-h-[calc(100dvh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.add('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-expand', 'fa-compress');
                 header.classList.add('header-hidden');
             } else {
-                container.classList.add('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+                container.classList.add('max-h-[calc(100dvh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-compress', 'fa-expand');
             }
@@ -565,7 +565,7 @@
 
         window.handleModalClick = (e) => {
             const container = document.getElementById('reportModalContainer');
-            if (container.classList.contains('max-h-[calc(100vh-20px)]')) {
+            if (container.classList.contains('max-h-[calc(100dvh-20px)]')) {
                 toggleModalFullscreen();
             }
         };
@@ -920,7 +920,7 @@
 
             const container = document.getElementById('reportModalContainer');
             const icon = document.getElementById('fullscreenIcon');
-            container.classList.add('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+            container.classList.add('max-h-[calc(100dvh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
             container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
             icon.className = 'fa-solid fa-expand text-xs';
 
