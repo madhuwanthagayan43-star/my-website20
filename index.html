@@ -161,18 +161,28 @@
 
         <!-- Recent Reports Bottom Sheet -->
         <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col sheet-normal">
+            
+            <!-- Drag Handle (ස්වයිප් කිරීමට පමණක් ක්‍රියාත්මක වේ) -->
             <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none flex items-center justify-center">
                 <div class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
-            <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
-                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="cycleBottomSheetState()">
+
+            <!-- Full Screen Exit Bar (Full screen වූ විට පමණක් පෙන්වයි) -->
+            <div id="exitFullScreenBar" class="hidden px-6 pb-2 items-center justify-between border-b border-gray-100">
+                <span class="font-bold text-gray-800 text-base">මෑත කාලීන වාර්තා (සියල්ල)</span>
+                <button onclick="setSheetState('normal')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold transition">වසා දමන්න (Exit)</button>
+            </div>
+
+            <!-- සාමාන්‍ය Header (ක්ලික් කිරීමෙන් ප්‍රමාණය වෙනස් නොවේ, ස්වයිප් කළ යුතුය) -->
+            <div id="normalHeader" class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
                     <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
                 </h2>
                 <div class="flex items-center gap-2">
                     <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
-                    <button onclick="cycleBottomSheetState()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="වෙනස් කරන්න">
-                        <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
-                    </button>
+                    <div class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
+                        <i id="sheetToggleIcon" class="fa-solid fa-chevron-up text-xs"></i>
+                    </div>
                 </div>
             </div>
             
@@ -378,6 +388,8 @@
             const sheet = document.getElementById('bottomSheet');
             const icon = document.getElementById('sheetToggleIcon');
             const header = document.getElementById('mainHeader');
+            const normalHeader = document.getElementById('normalHeader');
+            const exitBar = document.getElementById('exitFullScreenBar');
 
             sheet.classList.remove('sheet-normal', 'sheet-fullscreen', 'sheet-hidden');
 
@@ -385,31 +397,30 @@
                 sheet.classList.add('sheet-fullscreen');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.add('header-hidden');
+                normalHeader.style.display = 'none';
+                exitBar.classList.remove('hidden');
+                exitBar.classList.add('flex');
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
                 if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
                 header.classList.remove('header-hidden');
+                normalHeader.style.display = 'flex';
+                exitBar.classList.add('hidden');
+                exitBar.classList.remove('flex');
             } else {
                 // normal
                 sheet.classList.add('sheet-normal');
-                if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
+                if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
                 header.classList.remove('header-hidden');
+                normalHeader.style.display = 'flex';
+                exitBar.classList.add('hidden');
+                exitBar.classList.remove('flex');
             }
         }
 
-        window.cycleBottomSheetState = () => {
-            if (currentSheetState === 'normal') {
-                setBottomSheetState('fullscreen');
-            } else if (currentSheetState === 'fullscreen') {
-                setBottomSheetState('hidden');
-            } else {
-                setBottomSheetState('normal');
-            }
-        };
-
         window.setSheetState = (state) => setBottomSheetState(state);
 
-        // Touch & Drag Swipe for Bottom Sheet
+        // Touch & Drag Swipe for Bottom Sheet (ස්වයිප් කිරීමෙන් පමණක් පාලනය වීම)
         let startY = 0;
         let currentY = 0;
 
@@ -428,11 +439,11 @@
                 const diff = startY - currentY;
                 if (Math.abs(diff) > 30) {
                     if (diff > 0) {
-                        // Swiped up
+                        // ඉහළට ස්වයිප් කළහොත්
                         if (currentSheetState === 'hidden') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
                     } else {
-                        // Swiped down
+                        // පහළට ස්වයිප් කළහොත්
                         if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('hidden');
                     }
@@ -879,6 +890,7 @@
         }
 
         window.flyAndOpen = (id, lat, lng) => {
+            setBottomSheetState('hidden'); // ෂීට් එක සඟවා මැප් එකට අවධානය යොමු කරයි
             map.flyTo([lat, lng], 17, { duration: 1 });
             setTimeout(() => { if(mapMarkers[id]) mapMarkers[id].openPopup(); }, 1100);
         };
