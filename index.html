@@ -66,6 +66,11 @@
         .sheet-collapsed {
             transform: translateY(calc(100% - 56px)) !important;
         }
+
+        /* Modal positioning to avoid covering top header bar */
+        .modal-top-safe {
+            top: 76px;
+        }
     </style>
 </head>
 <body class="antialiased text-gray-800 font-sans h-screen w-screen flex flex-col">
@@ -169,59 +174,64 @@
     </div>
 
     <!-- Report Modal -->
-    <div id="reportModal" class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
+    <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[90vh] flex flex-col transform transition-transform translate-y-0">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100vh-85px)] flex flex-col transform transition-all duration-300 translate-y-0">
             
-            <div class="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
+            <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
-                    <h3 id="modalTitle" class="text-xl font-bold text-gray-900">නව වාර්තාවක්</h3>
-                    <p class="text-xs text-gray-500 font-medium mt-1"><i class="fa-regular fa-calendar-check mr-1"></i> <span id="modalDateTime"></span></p>
+                    <h3 id="modalTitle" class="text-lg sm:text-xl font-bold text-gray-900">නව වාර්තාවක්</h3>
+                    <p class="text-xs text-gray-500 font-medium mt-0.5"><i class="fa-regular fa-calendar-check mr-1"></i> <span id="modalDateTime"></span></p>
                 </div>
-                <button onclick="closeModal('reportModal')" class="w-9 h-9 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleModalFullscreen()" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition" title="Full Screen">
+                        <i id="fullscreenIcon" class="fa-solid fa-expand text-xs"></i>
+                    </button>
+                    <button onclick="closeModal('reportModal')" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
+                        <i class="fa-solid fa-xmark text-base"></i>
+                    </button>
+                </div>
             </div>
 
-            <div class="p-5 sm:p-6 overflow-y-auto custom-scroll flex-1">
-                <form id="elephantForm" class="space-y-5">
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1">
+                <form id="elephantForm" class="space-y-4">
                     <input type="hidden" id="formId">
                     <input type="hidden" id="formLat">
                     <input type="hidden" id="formLng">
                     <input type="hidden" id="formImageBase64">
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-map-pin text-green-600 w-5"></i> ස්ථානයේ නම / විස්තරය</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1.5"><i class="fa-solid fa-map-pin text-green-600 w-5"></i> ස්ථානයේ නම / විස්තරය</label>
                         <input type="text" id="formLocation" required placeholder="උදා: දියසේනපුර, 14 යාය..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition text-sm font-medium">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-list-ol text-green-600 w-5"></i> අලි ගණන</label>
+                            <label class="block text-sm font-bold text-gray-700 mb-1.5"><i class="fa-solid fa-list-ol text-green-600 w-5"></i> අලි ගණන</label>
                             <input type="number" id="formCount" required min="1" value="1" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-center font-bold text-lg bg-gray-50 transition">
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-compass text-green-600 w-5"></i> දිශාව (විකල්ප)</label>
+                            <label class="block text-sm font-bold text-gray-700 mb-1.5"><i class="fa-solid fa-compass text-green-600 w-5"></i> දිශාව (විකල්ප)</label>
                             <input type="text" id="formDirection" placeholder="ගම දෙසට" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition text-sm font-medium">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-camera text-green-600 w-5"></i> ඡායාරූපයක් (විකල්ප)</label>
-                        <div class="relative w-full h-36 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group cursor-pointer" onclick="openImageSourceModal()">
+                        <label class="block text-sm font-bold text-gray-700 mb-1.5"><i class="fa-solid fa-camera text-green-600 w-5"></i> ඡායාරූපයක් (විකල්ප)</label>
+                        <div class="relative w-full h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group cursor-pointer" onclick="openImageSourceModal()">
                             <div id="uploadPrompt" class="text-center transition-opacity">
-                                <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-2 group-hover:text-green-500 transition-colors"></i>
+                                <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-1 group-hover:text-green-500 transition-colors"></i>
                                 <p class="text-xs text-gray-600 font-bold">ඡායාරූපයක් තෝරන්න</p>
                             </div>
-                            <img id="imagePreview" src="" class="absolute inset-0 w-full h-full object-cover hidden" alt="Preview">
+                            <img id="imagePreview" src="" class="absolute inset-0 w-full h-full object-cover hidden" alt="Preview" onclick="event.stopPropagation(); openLightbox(this.src)">
                             <div id="imageOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity hidden">
-                                <span class="text-white text-sm font-bold bg-black/60 px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm"><i class="fa-solid fa-pen mr-2"></i>වෙනස් කරන්න</span>
+                                <span class="text-white text-xs font-bold bg-black/60 px-3 py-1.5 rounded-lg shadow-lg backdrop-blur-sm"><i class="fa-solid fa-pen mr-1"></i>වෙනස් කරන්න</span>
                             </div>
                         </div>
                         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="processImage(event)">
                         <input type="file" id="galleryInput" accept="image/*" class="hidden" onchange="processImage(event)">
-                        <div class="flex justify-end mt-2">
+                        <div class="flex justify-end mt-1.5">
                             <button type="button" id="btnRemoveImg" class="hidden text-xs text-red-500 font-bold hover:bg-red-50 px-2 py-1 rounded transition" onclick="removeImage()">
                                 <i class="fa-solid fa-trash mr-1"></i>ඉවත් කරන්න
                             </button>
@@ -229,23 +239,23 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-triangle-exclamation text-green-600 w-5"></i> අවදානම් මට්ටම</label>
-                        <div class="grid grid-cols-3 gap-3">
+                        <label class="block text-sm font-bold text-gray-700 mb-1.5"><i class="fa-solid fa-triangle-exclamation text-green-600 w-5"></i> අවදානම් මට්ටම</label>
+                        <div class="grid grid-cols-3 gap-2.5">
                             <label class="cursor-pointer">
                                 <input type="radio" name="riskLvl" value="high" class="peer sr-only" checked>
-                                <div class="text-center py-2.5 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 font-bold shadow-sm transition-all text-sm">
+                                <div class="text-center py-2 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 font-bold shadow-sm transition-all text-xs">
                                     <i class="fa-solid fa-radiation mr-1"></i> ඉහළ
                                 </div>
                             </label>
                             <label class="cursor-pointer">
                                 <input type="radio" name="riskLvl" value="medium" class="peer sr-only">
-                                <div class="text-center py-2.5 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 font-bold shadow-sm transition-all text-sm">
+                                <div class="text-center py-2 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 font-bold shadow-sm transition-all text-xs">
                                     <i class="fa-solid fa-circle-exclamation mr-1"></i> මධ්‍යම
                                 </div>
                             </label>
                             <label class="cursor-pointer">
                                 <input type="radio" name="riskLvl" value="low" class="peer sr-only">
-                                <div class="text-center py-2.5 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-green-50 peer-checked:border-green-500 peer-checked:text-green-700 font-bold shadow-sm transition-all text-sm">
+                                <div class="text-center py-2 px-1 rounded-xl border-2 border-transparent bg-gray-100 peer-checked:bg-green-50 peer-checked:border-green-500 peer-checked:text-green-700 font-bold shadow-sm transition-all text-xs">
                                     <i class="fa-solid fa-shield-halved mr-1"></i> අඩු
                                 </div>
                             </label>
@@ -254,9 +264,9 @@
                 </form>
             </div>
 
-            <div class="p-5 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
-                <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3.5 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition">අවලංගුයි</button>
-                <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3.5 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
+                <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition text-sm">අවලංගුයි</button>
+                <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>
                 </button>
             </div>
@@ -279,6 +289,14 @@
             </div>
             <button type="button" onclick="closeModal('imageSourceModal')" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition text-sm">අවලංගුයි</button>
         </div>
+    </div>
+
+    <!-- Fullscreen Image Lightbox Modal -->
+    <div id="lightboxModal" class="hidden fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto" onclick="closeLightbox()">
+        <button onclick="closeLightbox()" class="absolute top-5 right-5 text-white text-2xl z-10 w-11 h-11 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/80 transition active:scale-95">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img id="lightboxImage" src="" class="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/10" onclick="event.stopPropagation()">
     </div>
 
     <!-- Delete Modal -->
@@ -322,7 +340,7 @@
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Format: අවුරුද්ද, මාසය, දිනය, පැය 12 ක්‍රමයට වේලාව සහ අවසානයට AM / PM පමණි.
+        // Format: අවුරුද්ද, මාසය, දිනය, පැය 12 ක්‍රමයට වේලාව සහ AM / PM
         function formatDateTime12H(timestamp) {
             if (!timestamp) return '';
             const d = new Date(timestamp);
@@ -395,17 +413,50 @@
             }
         }
 
-        window.toggleBottomSheet = () => {
+        window.toggleBottomSheet = (forceState = null) => {
             const sheet = document.getElementById('bottomSheet');
             const icon = document.getElementById('sheetToggleIcon');
-            const isCollapsed = sheet.classList.contains('sheet-collapsed');
             
+            if (forceState === 'collapse') {
+                sheet.classList.add('sheet-collapsed');
+                if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                return;
+            }
+
+            const isCollapsed = sheet.classList.contains('sheet-collapsed');
             if (isCollapsed) {
                 sheet.classList.remove('sheet-collapsed');
-                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
             } else {
                 sheet.classList.add('sheet-collapsed');
-                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            }
+        };
+
+        // Lightbox Fullscreen image view
+        window.openLightbox = (src) => {
+            if (!src) return;
+            const lbImg = document.getElementById('lightboxImage');
+            lbImg.src = src;
+            document.getElementById('lightboxModal').classList.remove('hidden');
+        };
+
+        window.closeLightbox = () => {
+            document.getElementById('lightboxModal').classList.add('hidden');
+            document.getElementById('lightboxImage').src = '';
+        };
+
+        window.toggleModalFullscreen = () => {
+            const container = document.getElementById('reportModalContainer');
+            const icon = document.getElementById('fullscreenIcon');
+            if (container.classList.contains('max-h-[calc(100vh-85px)]')) {
+                container.classList.remove('max-h-[calc(100vh-85px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+                container.classList.add('h-full', 'w-full', 'max-w-none', 'rounded-none');
+                icon.classList.replace('fa-expand', 'fa-compress');
+            } else {
+                container.classList.add('max-h-[calc(100vh-85px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+                container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
+                icon.classList.replace('fa-compress', 'fa-expand');
             }
         };
 
@@ -629,7 +680,16 @@
                     const dt12H = formatDateTime12H(item.timestamp);
                     const timeMeta = getTimeMeta(item.timestamp);
                     const safeJson = encodeURIComponent(JSON.stringify(item));
-                    const imgHtml = item.imgData ? `<div class="mt-2 rounded-xl overflow-hidden shadow-sm"><img src="${item.imgData}" class="w-full h-28 object-cover"></div>` : '';
+                    
+                    // Clickable image for fullscreen preview inside Leaflet Popup
+                    const imgHtml = item.imgData ? `
+                        <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="openLightbox('${item.imgData}')">
+                            <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                                <i class="fa-solid fa-expand mr-1"></i> ලොකුවට බලන්න
+                            </div>
+                        </div>` : '';
+                    
                     const reporterName = item.userName || 'අනනාමික';
                     
                     // Leaflet Popup UI
@@ -645,7 +705,6 @@
                                 </span>
                             </div>
 
-                            <!-- Reporter Name, Date and 12-Hour AM/PM Time Details -->
                             <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 space-y-1.5 shadow-inner">
                                 <div class="text-xs text-gray-800 flex items-center justify-between">
                                     <span class="text-gray-500 font-medium"><i class="fa-solid fa-user-check text-green-600 mr-1"></i> වාර්තාකරු:</span>
@@ -697,9 +756,9 @@
                         mapMarkers[item.id] = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map).bindPopup(popupHtml);
                     }
 
-                    const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
+                    const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm cursor-pointer hover:opacity-90 transition" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
                     
-                    // Recent reports card in Bottom Sheet (Includes Date & 12H Time)
+                    // Recent reports card in Bottom Sheet
                     html += `
                     <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
                         <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
@@ -739,6 +798,9 @@
                 showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
                 return;
             }
+
+            // Modal එක open වෙන විට මෑත කාලීන වාර්තා පහළට (collapse) යැවීම
+            toggleBottomSheet('collapse');
 
             const form = document.getElementById('elephantForm');
             form.reset(); removeImage();
