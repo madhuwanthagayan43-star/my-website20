@@ -128,7 +128,7 @@
 
         marker.bindPopup(popupContent, {
             autoPan: false,
-            closeOnClick: false, // Map එක වෙනත් තැනක ක්ලික් කළොත් මිස පොප්-අප් එක මත ක්ලික් කරද්දී වැසීම වැළැක්වීමට
+            closeOnClick: false,
             autoClose: false
         });
 
@@ -139,30 +139,32 @@
 
             let startX = 0, startY = 0;
             let isDragging = false;
-
-            // පෝප්-අප් එක වැසීම වැළැක්වීමට Leaflet event propagation නැවැත්වීම
-            L.DomEvent.stopPropagation(popupNode);
-            L.DomEvent.disableClickPropagation(popupNode);
+            let touchStartTime = 0;
 
             innerBox.addEventListener('touchstart', function(event) {
                 startX = event.touches[0].clientX;
                 startY = event.touches[0].clientY;
                 isDragging = false;
+                touchStartTime = new Date().getTime();
             }, { passive: true });
 
             innerBox.addEventListener('touchmove', function(event) {
                 let moveX = event.touches[0].clientX;
                 let moveY = event.touches[0].clientY;
                 
-                // ඇඟිල්ල ටිකක් හෝ ඈතට ගෙනයනවා නම් (drag කරනවා නම්)
-                if (Math.abs(moveX - startX) > 6 || Math.abs(moveY - startY) > 6) {
+                // ඇඟිල්ල ටිකක් හෝ ඈතට ගෙනයනවා නම් ඩ්‍රැග් ලෙස සලකා මැප් එක ඩ්‍රැග් වීමට ඉඩ හැරීම
+                if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
                     isDragging = true;
+                    // ඩ්‍රැග් වන විට මැප් එකේ dragging handler එක වෙත touch events යොමු කිරීම
+                    map.dragging._draggable._onDown(event);
                 }
             }, { passive: true });
 
             innerBox.addEventListener('touchend', function(event) {
-                // ඩ්‍රැග් කර නැතිනම් (එක් වරක් පමණක් ටච් කර අතහැරියා නම්)
-                if (!isDragging) {
+                let touchDuration = new Date().getTime() - touchStartTime;
+                
+                // ඩ්‍රැග් කර නැතිනම් සහ ඉක්මනින් ටච් කර අතහැරියා නම් පමණක් 'හෙල්ලො' පෙන්වීම
+                if (!isDragging && touchDuration < 300) {
                     if (event.target.tagName !== 'BUTTON') {
                         alert('හෙල්ලො');
                     }
