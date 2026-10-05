@@ -171,7 +171,7 @@
                 <div class="flex items-center gap-2">
                     <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
                     
-                    <!-- Fullscreen Close / Minimize Button (Visible only when in fullscreen) -->
+                    <!-- Fullscreen Close / Minimize Button (Always visible inside sheet header) -->
                     <button id="sheetCloseBtn" onclick="setSheetState('normal')" class="hidden w-8 h-8 rounded-full bg-red-100 text-red-600 items-center justify-center hover:bg-red-200 transition shadow-sm" title="සාමාන්‍ය ප්‍රමාණයට හරවන්න">
                         <i class="fa-solid fa-xmark text-xs font-bold"></i>
                     </button>
@@ -376,7 +376,6 @@
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Bottom Sheet States: 'normal', 'fullscreen', 'hidden'
         let currentSheetState = 'normal';
 
         function setBottomSheetState(state) {
@@ -405,7 +404,6 @@
                     sheetCloseBtn.classList.add('hidden');
                 }
             } else {
-                // normal
                 sheet.classList.add('sheet-normal');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.remove('header-hidden');
@@ -428,7 +426,6 @@
 
         window.setSheetState = (state) => setBottomSheetState(state);
 
-        // Touch & Drag Swipe for Bottom Sheet
         let startY = 0;
         let currentY = 0;
 
@@ -447,11 +444,9 @@
                 const diff = startY - currentY;
                 if (Math.abs(diff) > 30) {
                     if (diff > 0) {
-                        // Swiped up
                         if (currentSheetState === 'hidden') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
                     } else {
-                        // Swiped down
                         if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('hidden');
                     }
