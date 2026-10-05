@@ -28,11 +28,9 @@
         .ui-layer { position: absolute; z-index: 40; pointer-events: none; }
         .pointer-events-auto { pointer-events: auto; }
         
-        /* Ensure popups are above everything else */
         .leaflet-popup-pane { z-index: 1000 !important; }
         .leaflet-control-container { z-index: 60 !important; }
         
-        /* Live location blue dot animation */
         .live-location-dot {
             width: 18px; height: 18px; background-color: #3b82f6;
             border-radius: 50%; border: 3px solid white;
@@ -62,10 +60,9 @@
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
         .leaflet-popup-content-wrapper { border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); padding: 0; overflow: hidden; }
-        .leaflet-popup-content { margin: 0; width: 260px !important; }
+        .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
-        /* Bottom Sheet Collapsed State */
         .sheet-collapsed {
             transform: translateY(calc(100% - 56px)) !important;
         }
@@ -91,7 +88,6 @@
             </div>
             
             <div class="flex items-center gap-2">
-                <!-- User Profile / Name Display Button -->
                 <button onclick="openNameChangeModal()" class="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-2 rounded-2xl text-xs font-bold text-gray-700 transition active:scale-95 shadow-sm" title="නම වෙනස් කරන්න">
                     <i class="fa-solid fa-circle-user text-green-600 text-base"></i>
                     <span id="displayUserName" class="max-w-[80px] truncate">...</span>
@@ -102,7 +98,7 @@
             </div>
         </header>
 
-        <!-- Dynamic Alert Banner -->
+        <!-- Alert Banner -->
         <div id="alertBanner" class="hidden pointer-events-auto bg-gradient-to-r from-red-600 to-red-700 backdrop-blur text-white p-4 rounded-2xl shadow-[0_10px_30px_rgba(220,38,38,0.5)] border border-red-400 transition-all duration-500 transform -translate-y-4 opacity-0 flex items-center justify-between">
             <div class="flex items-center gap-4">
                 <div class="bg-white text-red-600 p-3 rounded-full flex items-center justify-center animate-bounce shadow-inner">
@@ -128,8 +124,8 @@
             </button>
         </div>
 
-        <!-- Recent Reports Bottom Sheet (Collapsible) -->
-        <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col h-[35vh] min-h-[250px] max-h-[400px] transition-transform duration-300 ease-in-out transform translate-y-0">
+        <!-- Recent Reports Bottom Sheet -->
+        <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col h-[38vh] min-h-[260px] max-h-[420px] transition-transform duration-300 ease-in-out transform translate-y-0">
             <div class="w-full pt-3 pb-1 cursor-pointer select-none" onclick="toggleBottomSheet()">
                 <div class="w-14 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
             </div>
@@ -144,6 +140,7 @@
                     </button>
                 </div>
             </div>
+            
             <!-- Report List -->
             <div id="reportsListContainer" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 pb-6">
                 <div class="flex flex-col items-center justify-center h-full text-gray-400">
@@ -154,16 +151,16 @@
         </div>
     </div>
 
-    <!-- First Visit Name Input Modal -->
+    <!-- Name Input Modal -->
     <div id="nameModal" class="hidden fixed inset-0 z-[180] flex items-center justify-center bg-gray-900/80 backdrop-blur-md p-4 pointer-events-auto">
         <div class="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl text-center border border-gray-100 transform transition-all scale-100">
             <div class="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-inner">
                 <i class="fa-solid fa-user-check"></i>
             </div>
             <h3 class="text-xl font-bold text-gray-900 mb-1">සාදරයෙන් පිළිගනිමු!</h3>
-            <p class="text-xs text-gray-500 font-medium mb-5 leading-relaxed">පද්ධතියට වාර්තා ඇතුළත් කිරීමට සහ හඳුනා ගැනීමට කරුණාකර ඔබගේ නම ඇතුළත් කරන්න.</p>
+            <p class="text-xs text-gray-500 font-medium mb-5 leading-relaxed">පද්ධතියට වාර්තා ඇතුළත් කිරීමට කරුණාකර ඔබගේ නම ඇතුළත් කරන්න.</p>
             <form id="nameForm" onsubmit="saveUserName(event)" class="space-y-4">
-                <input type="text" id="userNameInput" required placeholder="ඔබගේ නම (උදා: සුනිල්)" class="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-sm font-bold bg-gray-50 text-center transition">
+                <input type="text" id="userNameInput" required placeholder="ඔබගේ නම (උදා: ගයාන්)" class="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-sm font-bold bg-gray-50 text-center transition">
                 <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-lg shadow-green-600/30 active:scale-95 transition text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-to-bracket"></i> ඉදිරියට යන්න
                 </button>
@@ -177,7 +174,6 @@
         
         <div class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[90vh] flex flex-col transform transition-transform translate-y-0">
             
-            <!-- Modal Header -->
             <div class="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
                     <h3 id="modalTitle" class="text-xl font-bold text-gray-900">නව වාර්තාවක්</h3>
@@ -188,7 +184,6 @@
                 </button>
             </div>
 
-            <!-- Modal Body (Form) -->
             <div class="p-5 sm:p-6 overflow-y-auto custom-scroll flex-1">
                 <form id="elephantForm" class="space-y-5">
                     <input type="hidden" id="formId">
@@ -196,46 +191,36 @@
                     <input type="hidden" id="formLng">
                     <input type="hidden" id="formImageBase64">
 
-                    <!-- Location Name -->
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-map-pin text-green-600 w-5"></i> ස්ථානයේ නම / විස්තරය</label>
-                        <input type="text" id="formLocation" required placeholder="උදා: වැව් ඉවුර, 14 යාය..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 transition text-sm font-medium">
+                        <input type="text" id="formLocation" required placeholder="උදා: දියසේනපුර, 14 යාය..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition text-sm font-medium">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <!-- Count -->
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-list-ol text-green-600 w-5"></i> අලි ගණන</label>
                             <input type="number" id="formCount" required min="1" value="1" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-center font-bold text-lg bg-gray-50 transition">
                         </div>
-                        <!-- Direction -->
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-compass text-green-600 w-5"></i> දිශාව (විකල්ප)</label>
                             <input type="text" id="formDirection" placeholder="ගම දෙසට" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition text-sm font-medium">
                         </div>
                     </div>
 
-                    <!-- Image Upload Section -->
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-camera text-green-600 w-5"></i> ඡායාරූපයක් (විකල්ප)</label>
                         <div class="relative w-full h-36 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group cursor-pointer" onclick="openImageSourceModal()">
-                            
                             <div id="uploadPrompt" class="text-center transition-opacity">
                                 <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-2 group-hover:text-green-500 transition-colors"></i>
                                 <p class="text-xs text-gray-600 font-bold">ඡායාරූපයක් තෝරන්න</p>
                             </div>
-                            
                             <img id="imagePreview" src="" class="absolute inset-0 w-full h-full object-cover hidden" alt="Preview">
-                            
                             <div id="imageOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity hidden">
                                 <span class="text-white text-sm font-bold bg-black/60 px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm"><i class="fa-solid fa-pen mr-2"></i>වෙනස් කරන්න</span>
                             </div>
                         </div>
-                        
-                        <!-- Hidden Camera & Gallery Inputs -->
                         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="processImage(event)">
                         <input type="file" id="galleryInput" accept="image/*" class="hidden" onchange="processImage(event)">
-                        
                         <div class="flex justify-end mt-2">
                             <button type="button" id="btnRemoveImg" class="hidden text-xs text-red-500 font-bold hover:bg-red-50 px-2 py-1 rounded transition" onclick="removeImage()">
                                 <i class="fa-solid fa-trash mr-1"></i>ඉවත් කරන්න
@@ -243,7 +228,6 @@
                         </div>
                     </div>
 
-                    <!-- Risk Level Selection -->
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-triangle-exclamation text-green-600 w-5"></i> අවදානම් මට්ටම</label>
                         <div class="grid grid-cols-3 gap-3">
@@ -270,7 +254,6 @@
                 </form>
             </div>
 
-            <!-- Modal Footer -->
             <div class="p-5 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
                 <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3.5 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition">අවලංගුයි</button>
                 <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3.5 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
@@ -280,7 +263,7 @@
         </div>
     </div>
 
-    <!-- Image Source Selection Modal (Camera vs Gallery) -->
+    <!-- Image Source Modal -->
     <div id="imageSourceModal" class="hidden fixed inset-0 z-[160] flex items-end sm:items-center justify-center pointer-events-auto bg-gray-900/70 backdrop-blur-sm px-4">
         <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center border border-gray-100">
             <h3 class="text-lg font-bold text-gray-900 mb-4">ඡායාරූපය ලබාගන්නා ආකාරය</h3>
@@ -298,7 +281,7 @@
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Delete Modal -->
     <div id="deleteModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center pointer-events-auto backdrop-blur-sm bg-gray-900/70 px-4 transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center">
             <div class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 border-4 border-white shadow-lg">
@@ -337,22 +320,27 @@
         let mapMarkers = {}; 
         let targetDeleteId = null;
 
-        const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි (පැය භාගයයි)
+        const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Date and Time Helper (12-Hour format with AM/PM)
+        // Format: අවුරුද්ද, මාසය, දිනය, පැය 12 ක්‍රමයට වේලාව සහ අවසානයට AM / PM පමණි.
         function formatDateTime12H(timestamp) {
             if (!timestamp) return '';
             const d = new Date(timestamp);
+            const year = d.getFullYear();
+            const month = (d.getMonth() + 1).toString().padStart(2, '0');
+            const date = d.getDate().toString().padStart(2, '0');
+            
             let hours = d.getHours();
             const minutes = d.getMinutes().toString().padStart(2, '0');
             const ampm = hours >= 12 ? 'PM' : 'AM';
+            
             hours = hours % 12;
-            hours = hours ? hours : 12; // 0 පැය 12 ලෙස පෙන්වීමට
-            const dateStr = d.toLocaleDateString('si-LK', { year: 'numeric', month: 'short', day: 'numeric' });
-            return `${dateStr} ${ampm} ${hours}:${minutes}`;
+            hours = hours ? hours : 12; // 0 පැය 12 බවට
+            const hoursStr = hours.toString().padStart(2, '0');
+            
+            return `${year} වසර ${month} මස ${date} වෙනි දින ${hoursStr}:${minutes} ${ampm}`;
         }
 
-        // Time metadata helper for countdown calculation
         function getTimeMeta(timestamp) {
             const now = Date.now();
             const elapsedMs = Math.max(0, now - timestamp);
@@ -374,7 +362,6 @@
             };
         }
 
-        // User Login & LocalStorage Management
         window.checkUserLogin = () => {
             if (!currentUserName) {
                 document.getElementById('nameModal').classList.remove('hidden');
@@ -408,7 +395,6 @@
             }
         }
 
-        // Bottom Sheet Toggle Functionality
         window.toggleBottomSheet = () => {
             const sheet = document.getElementById('bottomSheet');
             const icon = document.getElementById('sheetToggleIcon');
@@ -423,7 +409,6 @@
             }
         };
 
-        // Modal for Image Source Selection
         window.openImageSourceModal = () => {
             document.getElementById('imageSourceModal').classList.remove('hidden');
         };
@@ -474,19 +459,17 @@
                 gain.gain.linearRampToValueAtTime(0, now + 2.0);
                 
                 osc.start(now); osc.stop(now + 2.0);
-            } catch (e) { console.log("Audio not supported."); }
+            } catch (e) { console.log("Audio error:", e); }
         };
 
         function initializeMap() {
             map = L.map('map', { zoomControl: false }).setView([7.8731, 80.7718], 8);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            // Satellite Layer (Esri)
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19, attribution: 'Esri'
             }).addTo(map);
 
-            // Place Names Overlay (CartoDB)
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
                 subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane'
             }).addTo(map);
@@ -519,7 +502,7 @@
 
             document.getElementById('btnCenterMap').addEventListener('click', () => {
                 if(userMarker) map.flyTo(userMarker.getLatLng(), 16);
-                else showToast("ස්ථානය ලබා ගනිමින් පවතී. කරුණාකර Location on කරන්න.", "error");
+                else showToast("ස්ථානය ලබා ගනිමින් පවතී. Location On කරන්න.", "error");
             });
 
             document.getElementById('btnReportCurrent').addEventListener('click', () => {
@@ -527,7 +510,7 @@
                     const pos = userMarker.getLatLng();
                     openReportModal(null, pos.lat, pos.lng);
                 } else {
-                    showToast("පළමුව සිතියමේ ස්ථානයක් click කරන්න.", "error");
+                    showToast("පළමුව සිතියමේ ස්ථානයක් Click කරන්න.", "error");
                 }
             });
         }
@@ -546,7 +529,6 @@
 
                     snapshot.forEach(docSnap => {
                         const data = docSnap.data();
-                        // මිනිත්තු 30 (30 * 60 * 1000 ms) ට වඩා අඩු පැරණි වාර්තා පමණක් ලබාගැනීම
                         if (!data.timestamp || (currentTime - data.timestamp < EXPIRE_TIME_MS)) {
                             temp.push({ id: docSnap.id, ...data });
                         }
@@ -570,7 +552,7 @@
                 });
             } catch (err) {
                 console.error("Setup error:", err);
-                showToast("පද්ධති දෝෂයකි. පිටුව රිෆ්‍රෙෂ් කරන්න.", "error");
+                showToast("පද්ධති දෝෂයකි.", "error");
             }
         }
 
@@ -602,7 +584,6 @@
                 </div>`;
         }
 
-        // Live Countdown and Expire Engine (Runs every 1 second)
         setInterval(() => {
             if (reportsData.length === 0) return;
             const now = Date.now();
@@ -614,7 +595,6 @@
                 if (timeMeta.isExpired) {
                     hasExpiredItems = true;
                 } else {
-                    // Dynamic Countdown element update in Popup
                     const cdEl = document.getElementById(`cd-popup-${item.id}`);
                     if (cdEl) cdEl.innerText = timeMeta.countdownFormatted;
 
@@ -623,13 +603,11 @@
                         noteEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.`;
                     }
 
-                    // Dynamic element update in Bottom sheet list
                     const listCdEl = document.getElementById(`cd-list-${item.id}`);
                     if (listCdEl) listCdEl.innerText = `${timeMeta.remainingMin}m`;
                 }
             });
 
-            // If any item expired, filter and refresh UI
             if (hasExpiredItems) {
                 reportsData = reportsData.filter(r => (now - r.timestamp) < EXPIRE_TIME_MS);
                 refreshDataUI();
@@ -654,10 +632,9 @@
                     const imgHtml = item.imgData ? `<div class="mt-2 rounded-xl overflow-hidden shadow-sm"><img src="${item.imgData}" class="w-full h-28 object-cover"></div>` : '';
                     const reporterName = item.userName || 'අනනාමික';
                     
-                    // Detailed Leaflet Popup UI
+                    // Leaflet Popup UI
                     const popupHtml = `
                         <div class="p-3.5 space-y-2">
-                            <!-- Top Bar: Risk Level & Countdown Badge -->
                             <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100">
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}">
                                     <i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}
@@ -668,43 +645,40 @@
                                 </span>
                             </div>
 
-                            <!-- Reporter & Time Details -->
-                            <div class="bg-gray-50/80 p-2 rounded-xl border border-gray-100/80 space-y-1">
+                            <!-- Reporter Name, Date and 12-Hour AM/PM Time Details -->
+                            <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 space-y-1.5 shadow-inner">
                                 <div class="text-xs text-gray-800 flex items-center justify-between">
-                                    <span class="text-gray-500 font-medium"><i class="fa-solid fa-user-pen text-green-600 mr-1"></i> වාර්තාකරු:</span>
-                                    <b class="text-green-800">${reporterName}</b>
+                                    <span class="text-gray-500 font-medium"><i class="fa-solid fa-user-check text-green-600 mr-1"></i> වාර්තාකරු:</span>
+                                    <b class="text-green-800 text-sm font-bold">${reporterName}</b>
                                 </div>
-                                <div class="text-[11px] text-gray-700 flex items-center justify-between">
+                                <div class="text-[11px] text-gray-700 flex flex-col gap-0.5 pt-1 border-t border-gray-200/60">
                                     <span class="text-gray-500 font-medium"><i class="fa-regular fa-clock text-blue-600 mr-1"></i> දිනය/වේලාව:</span>
-                                    <b class="text-gray-800">${dt12H}</b>
+                                    <b class="text-gray-900 font-bold bg-white px-2 py-1 rounded border border-gray-200 text-[11px] leading-snug">${dt12H}</b>
                                 </div>
                             </div>
 
-                            <!-- Location & Note Details -->
-                            <div class="bg-amber-50/60 rounded-xl p-2.5 border border-amber-100 space-y-1.5">
+                            <div class="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200 space-y-1.5">
                                 <div>
-                                    <span class="text-[10px] text-amber-800 font-bold uppercase tracking-wider block"><i class="fa-solid fa-map-pin mr-1"></i> ස්ථානයේ විස්තරය</span>
+                                    <span class="text-[10px] text-amber-900 font-bold uppercase tracking-wider block"><i class="fa-solid fa-map-pin mr-1"></i> ස්ථානයේ විස්තරය</span>
                                     <p class="text-xs font-bold text-gray-900 m-0 leading-tight mt-0.5">${item.location}</p>
                                 </div>
-                                <div class="flex justify-between items-center text-xs text-gray-700 pt-1.5 border-t border-amber-200/50">
-                                    <span><i class="fa-solid fa-elephant text-amber-700 w-4"></i> අලි ගණන:</span> <b>${item.count}</b>
+                                <div class="flex justify-between items-center text-xs text-gray-800 pt-1.5 border-t border-amber-200/60 font-medium">
+                                    <span><i class="fa-solid fa-elephant text-amber-700 w-4"></i> අලි ගණන:</span> <b class="text-sm font-bold text-amber-900">${item.count}</b>
                                 </div>
-                                ${item.direction ? `<div class="flex justify-between items-center text-xs text-gray-700">
+                                ${item.direction ? `<div class="flex justify-between items-center text-xs text-gray-800 font-medium">
                                     <span><i class="fa-solid fa-compass text-amber-700 w-4"></i> දිශාව:</span> <b>${item.direction}</b>
                                 </div>` : ''}
                             </div>
 
                             ${imgHtml}
 
-                            <!-- 30-Minute Auto-delete Notice Note -->
-                            <div id="note-popup-${item.id}" class="text-[10px] text-amber-800 bg-amber-100/70 p-2 rounded-xl border border-amber-200 text-center font-bold leading-tight">
+                            <div id="note-popup-${item.id}" class="text-[10px] text-amber-900 bg-amber-100/80 p-2 rounded-xl border border-amber-200 text-center font-bold leading-tight">
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
 
-                            <!-- Action Buttons -->
                             <div class="flex gap-2 pt-1">
-                                <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-100 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
-                                <button onclick="triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-100 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
+                                <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
+                                <button onclick="triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
                             </div>
                         </div>`;
 
@@ -725,6 +699,7 @@
 
                     const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
                     
+                    // Recent reports card in Bottom Sheet (Includes Date & 12H Time)
                     html += `
                     <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
                         <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
@@ -735,7 +710,10 @@
                                 <span class="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100"><i class="fa-solid fa-hourglass-half mr-0.5"></i><span id="cd-list-${item.id}">${timeMeta.remainingMin}m</span></span>
                             </div>
                             <h4 class="font-bold text-gray-800 text-sm leading-tight">${item.location}</h4>
-                            <div class="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500 font-bold">
+                            <div class="text-[11px] font-bold text-blue-700 mt-1">
+                                <i class="fa-regular fa-clock mr-1"></i> ${dt12H}
+                            </div>
+                            <div class="flex items-center gap-3 mt-1 text-[11px] text-gray-500 font-bold">
                                 <span><i class="fa-solid fa-elephant text-gray-400 mr-1"></i> අලි ${item.count}</span>
                                 <span class="text-green-700 truncate max-w-[100px]"><i class="fa-solid fa-user text-gray-400 mr-1"></i> ${reporterName}</span>
                             </div>
@@ -851,8 +829,6 @@
 
             try {
                 const id = document.getElementById('formId').value;
-                
-                // නව නිවේදනයක් නිර්මාණය කිරීමේදී මෙන්ම Modify කරන මොහොතේදීත් timestamp එක වර්තමාන වේලාවට යාවත්කාලීන වේ (විනාඩි 30 කාලය අලුතින් ආරම්භ වේ).
                 const payload = {
                     location: document.getElementById('formLocation').value.trim(),
                     count: parseInt(document.getElementById('formCount').value) || 1,
