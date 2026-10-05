@@ -32,7 +32,6 @@
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s ease-in-out;
         }
         .leaflet-popup-content {
             pointer-events: none !important;
@@ -44,23 +43,6 @@
         }
         .leaflet-container a.leaflet-popup-close-button {
             color: #d9534f;
-        }
-
-        /* Full Screen Popup එක සඳහා CSS පන්තිය */
-        .leaflet-popup-content-wrapper.fullscreen-popup {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 90vw !important;
-            max-width: 400px !important;
-            height: auto !important;
-            max-height: 80vh !important;
-            z-index: 9999 !important;
-            pointer-events: auto !important;
-        }
-        .leaflet-popup-content-wrapper.fullscreen-popup .leaflet-popup-content {
-            pointer-events: auto !important;
         }
 
         /* යටින් ඇති මෑත කාලීන වාර්තා Bottom Sheet එක */
@@ -152,36 +134,36 @@
             autoPan: false
         });
 
-        // පොප්-අප් එක විවෘත වූ පසු එකවරක් ක්ලික් කළ විට Full Screen වීමට සහ Drag කිරීමට සකස් කිරීම
+        // පොප්-අප් එක විවෘත වූ පසු ටච් ඉවෙන්ට්ස් පාලනය කිරීම
         marker.on('popupopen', function(e) {
-            const popup = e.popup;
-            const wrapper = popup.getElement().querySelector('.leaflet-popup-content-wrapper');
             const innerBox = document.getElementById('popup-inner-box');
 
-            let isDragging = false;
             let startX, startY;
+            let isDragging = false;
 
-            // ටච් එක ආරම්භ වන විට
             innerBox.addEventListener('touchstart', function(e) {
-                isDragging = false;
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
+                isDragging = false;
             }, { passive: true });
 
-            // ටච් කරමින් අඳින විට (Drag)
             innerBox.addEventListener('touchmove', function(e) {
                 let moveX = e.touches[0].clientX;
                 let moveY = e.touches[0].clientY;
-                if (Math.abs(moveX - startX) > 10 || Math.abs(moveY - startY) > 10) {
-                    isDragging = true; // ඩ්‍රැග් කරන බව තහවුරු වේ
+                
+                // ඇඟිල්ල ටිකක් හෝ ඈතට ගෙනයනවා නම් (drag කරනවා නම්)
+                if (Math.abs(moveX - startX) > 8 || Math.abs(moveY - startY) > 8) {
+                    isDragging = true;
                 }
             }, { passive: true });
 
-            // ටච් එක ඉවත් කළ විට (Tap / Click කිරීම)
             innerBox.addEventListener('touchend', function(e) {
+                // ඩ්‍රැග් කර නැතිනම් (ერთ වරක් ටච් කර අතහැරියා නම්)
                 if (!isDragging) {
-                    // ඩ්‍රැග් කර නැතිනම් එකවර ටච් කිරීමක් ලෙස සලකා Full Screen කිරීම
-                    wrapper.classList.toggle('fullscreen-popup');
+                    // බටන් එකක් ක්ලික් කළේ නැත්නම් පමණක් 'හෙල්ලො' පණිවිඩය පෙන්වීම
+                    if (e.target.tagName !== 'BUTTON') {
+                        alert('හෙල්ලො');
+                    }
                 }
             });
         });
