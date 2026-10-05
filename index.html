@@ -23,12 +23,14 @@
     </script>
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; touch-action: none; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 10; }
         
-        .ui-layer { position: absolute; z-index: 40; pointer-events: none; }
+        /* Map සහ UI Layer z-index වෙනස්කම් */
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 20; }
+        .ui-layer { position: absolute; z-index: 15; pointer-events: none; }
         .pointer-events-auto { pointer-events: auto; }
         
-        .leaflet-popup-pane { z-index: 1000 !important; }
+        /* Popup එක Header එකට උඩින් පෙනෙන පරිදි z-index 9999 ලෙස සකස් කිරීම */
+        .leaflet-popup-pane, .leaflet-popup { z-index: 9999 !important; }
         .leaflet-control-container { z-index: 60 !important; }
         
         .live-location-dot {
@@ -59,7 +61,22 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        .leaflet-popup-content-wrapper { border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); padding: 0; overflow: hidden; }
+        /* Zoom Out කිරීමේදී Popup එක ස්වයංක්‍රීයව කුඩා වීම සඳහා CSS Responsive Scaling */
+        .leaflet-popup-content-wrapper { 
+            border-radius: 1rem; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); 
+            padding: 0; 
+            overflow: hidden; 
+            transition: transform 0.2s ease-in-out;
+            transform-origin: bottom center;
+        }
+        .map-zoom-low .leaflet-popup-content-wrapper {
+            transform: scale(0.85);
+        }
+        .map-zoom-very-low .leaflet-popup-content-wrapper {
+            transform: scale(0.7);
+        }
+
         .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
@@ -115,7 +132,7 @@
         </div>
     </div>
 
-    <div class="ui-layer bottom-0 left-0 right-0 flex flex-col pointer-events-none pb-safe">
+    <div class="ui-layer bottom-0 left-0 right-0 flex flex-col pointer-events-none pb-safe" style="z-index:25;">
         
         <!-- Floating Action Button -->
         <div class="flex justify-end px-5 mb-5 pointer-events-none">
@@ -322,7 +339,7 @@
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Format: අවුරුද්ද, මාසය, දිනය, පැය 12 ක්‍රමයට වේලාව සහ අවසානයට AM / PM පමණි.
+        // 1. දිනය සහ වේලාව YYYY-MM-DD HH:mm AM/PM ආකෘතියට සැකසීම (සිංහල වචන ඉවත් කරන ලදී)
         function formatDateTime12H(timestamp) {
             if (!timestamp) return '';
             const d = new Date(timestamp);
@@ -335,10 +352,10 @@
             const ampm = hours >= 12 ? 'PM' : 'AM';
             
             hours = hours % 12;
-            hours = hours ? hours : 12; // 0 පැය 12 බවට
+            hours = hours ? hours : 12;
             const hoursStr = hours.toString().padStart(2, '0');
             
-            return `${year} වසර ${month} මස ${date} වෙනි දින ${hoursStr}:${minutes} ${ampm}`;
+            return `${year}-${month}-${date} ${hoursStr}:${minutes} ${ampm}`;
         }
 
         function getTimeMeta(timestamp) {
@@ -473,6 +490,18 @@
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
                 subdomains: 'abcd', maxZoom: 19, pane: 'shadowPane'
             }).addTo(map);
+
+            // 3. Zoom level එක අනුව Popup එකේ ප්‍රමාණය කුඩා කිරීම සඳහා Event Listener එක
+            map.on('zoomend', () => {
+                const container = map.getContainer();
+                const zoom = map.getZoom();
+                container.classList.remove('map-zoom-low', 'map-zoom-very-low');
+                if (zoom < 11) {
+                    container.classList.add('map-zoom-very-low');
+                } else if (zoom < 13) {
+                    container.classList.add('map-zoom-low');
+                }
+            });
 
             map.on('click', (e) => {
                 if(tempMarker) map.removeLayer(tempMarker);
@@ -699,7 +728,7 @@
 
                     const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
                     
-                    // Recent reports card in Bottom Sheet (Includes Date & 12H Time)
+                    // Recent reports card in Bottom Sheet
                     html += `
                     <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
                         <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
