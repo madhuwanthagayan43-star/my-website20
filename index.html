@@ -69,7 +69,7 @@
 
         .leaflet-popup-content-wrapper { border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); padding: 0; overflow: hidden; }
         .leaflet-popup-content { margin: 0; width: 280px !important; }
-        .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+        .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10;}
 
         /* Popup Fullscreen Styles */
         .leaflet-popup-pane .leaflet-popup.popup-fullscreen {
@@ -236,7 +236,7 @@
     <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0" onclick="handleModalClick(event)">
             
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
@@ -253,7 +253,7 @@
                 </div>
             </div>
 
-            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1 cursor-default" onclick="event.stopPropagation()">
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1" onclick="event.stopPropagation()">
                 <form id="elephantForm" class="space-y-4">
                     <input type="hidden" id="formId">
                     <input type="hidden" id="formLat">
@@ -323,7 +323,7 @@
                 </form>
             </div>
 
-            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] cursor-default" onclick="event.stopPropagation()">
+            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]" onclick="event.stopPropagation()">
                 <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition text-sm">අවලංගුයි</button>
                 <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>
@@ -397,7 +397,7 @@
         let mapMarkers = {}; 
         let targetDeleteId = null;
 
-        const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
+        const EXPIRE_TIME_MS = 30 * 60 * 1000;
 
         let currentSheetState = 'normal';
 
@@ -811,7 +811,7 @@
                     
                     const popupHtml = `
                         <div class="p-3.5 space-y-2 popup-inner-content">
-                            <!-- Fullscreen Header / Close Bar (Visible only in fullscreen mode) -->
+                            <!-- Fullscreen Header / Close Bar -->
                             <div class="popup-fs-header hidden items-center justify-between pb-3 border-b border-gray-100 mb-2">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs font-bold px-2.5 py-1 rounded-md border ${theme.class}">
@@ -882,7 +882,6 @@
                             </div>`;
                         const customIcon = L.divIcon({ className:'', html: markerHtml, iconSize: [48,48], iconAnchor: [24,24], popupAnchor: [0, -20] });
                         
-                        // අදාළ අවශ්‍යතා මත autoPan: false, closeOnClick: false, autoClose: false සකසා ඇත
                         const marker = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map);
                         marker.bindPopup(popupHtml, {
                             autoPan: false,
@@ -890,16 +889,18 @@
                             autoClose: false
                         });
 
-                        // Popup එක විවෘත වූ පසු අන්තර්ක්‍රියාකාරී හැසිරීම් (Drag & Single Tap Fullscreen) එක් කිරීම
                         marker.on('popupopen', (e) => {
                             const popupObj = e.popup;
                             const el = popupObj.getElement();
                             if (!el) return;
 
+                            // Leaflet හි default map dragging සමග ගැටුම් වළක්වා ගැනීමට මෙම කේතය අත්‍යවශ්‍ය වේ
+                            L.DomEvent.disableClickPropagation(el);
+                            L.DomEvent.disableScrollPropagation(el);
+
                             const contentWrapper = el.querySelector('.leaflet-popup-content-wrapper');
                             if (!contentWrapper) return;
 
-                            // 1. Drag / Pan පහසුකම සහ Single Tap Fullscreen සඳහා event listeners එකතු කිරීම
                             let isDragging = false;
                             let startX = 0, startY = 0;
 
@@ -910,25 +911,22 @@
                             };
 
                             contentWrapper.onpointermove = (pe) => {
-                                if (Math.abs(pe.clientX - startX) > 8 || Math.abs(pe.clientY - startY) > 8) {
+                                if (Math.abs(pe.clientX - startX) > 6 || Math.abs(pe.clientY - startY) > 6) {
                                     isDragging = true;
                                 }
                             };
 
                             contentWrapper.onpointerup = (pe) => {
                                 if (!isDragging) {
-                                    // Single Tap සිදු වූ විට Full-Screen Mode වෙත මාරුවීම
                                     if (!contentWrapper.classList.contains('is-fullscreen-wrapper')) {
                                         contentWrapper.classList.add('is-fullscreen-wrapper');
                                         popupObj._container.classList.add('popup-fullscreen');
                                         
-                                        // Fullscreen UI පෙන්වීම
                                         const fsHeader = contentWrapper.querySelector('.popup-fs-header');
                                         const normalHeader = contentWrapper.querySelector('.popup-normal-header');
                                         if (fsHeader) fsHeader.classList.replace('hidden', 'flex');
                                         if (normalHeader) normalHeader.classList.add('hidden');
                                         
-                                        // සිතියමේ උඩ Header එක සැඟවීම
                                         document.getElementById('mainHeader').classList.add('header-hidden');
                                     }
                                 }
@@ -969,7 +967,6 @@
             }
         }
 
-        // Fullscreen Mode එකෙන් ඉවත් වීමේ ශ්‍රිතය (Exit Fullscreen)
         window.exitPopupFullscreen = (e, id) => {
             e.stopPropagation();
             if (mapMarkers[id]) {
