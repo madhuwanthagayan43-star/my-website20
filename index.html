@@ -63,13 +63,43 @@
         .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
-        .sheet-collapsed {
+        /* Bottom Sheet 3 States */
+        #bottomSheet {
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sheet-normal {
+            height: 38vh !important;
+            min-height: 260px;
+            max-height: 420px;
+            transform: translateY(0) !important;
+        }
+
+        .sheet-fullscreen {
+            height: 100vh !important;
+            min-height: 100vh !important;
+            max-height: 100vh !important;
+            transform: translateY(0) !important;
+            border-radius: 0 !important;
+        }
+
+        .sheet-hidden {
+            height: 38vh !important;
             transform: translateY(calc(100% - 56px)) !important;
         }
 
-        /* Modal positioning to avoid covering top header bar */
+        /* Top Header Hide Transition */
+        #mainHeader {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .header-hidden {
+            transform: translateY(-120%);
+            opacity: 0;
+            pointer-events: none !important;
+        }
+
         .modal-top-safe {
-            top: 76px;
+            top: 0px;
         }
     </style>
 </head>
@@ -79,7 +109,7 @@
 
     <div class="ui-layer top-0 left-0 right-0 p-3 sm:p-4 flex flex-col gap-3">
         <!-- Header -->
-        <header class="pointer-events-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 flex justify-between items-center border border-white/50">
+        <header id="mainHeader" class="pointer-events-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 flex justify-between items-center border border-white/50">
             <div class="flex items-center gap-3">
                 <div class="bg-gradient-to-br from-green-500 to-green-700 text-white p-2 rounded-xl w-12 h-12 flex items-center justify-center shadow-inner">
                     <i class="fa-solid fa-elephant text-2xl"></i>
@@ -130,17 +160,17 @@
         </div>
 
         <!-- Recent Reports Bottom Sheet -->
-        <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col h-[38vh] min-h-[260px] max-h-[420px] transition-transform duration-300 ease-in-out transform translate-y-0">
-            <div class="w-full pt-3 pb-1 cursor-pointer select-none" onclick="toggleBottomSheet()">
+        <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col sheet-normal">
+            <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none">
                 <div class="w-14 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
             </div>
             <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
-                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="toggleBottomSheet()">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="cycleBottomSheetState()">
                     <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
                 </h2>
                 <div class="flex items-center gap-2">
                     <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
-                    <button onclick="toggleBottomSheet()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="පහළට / ඉහළට">
+                    <button onclick="cycleBottomSheetState()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="වෙනස් කරන්න">
                         <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
                     </button>
                 </div>
@@ -177,7 +207,7 @@
     <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100vh-85px)] flex flex-col transform transition-all duration-300 translate-y-0">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100vh-20px)] flex flex-col transform transition-all duration-300 translate-y-0">
             
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
@@ -340,7 +370,78 @@
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Format: YYYY/MM/DD hh:mm AM/PM (වසර, මස, දින යන්න නොමැතිව)
+        // Bottom Sheet States: 'normal', 'fullscreen', 'hidden'
+        let currentSheetState = 'normal';
+
+        function setBottomSheetState(state) {
+            currentSheetState = state;
+            const sheet = document.getElementById('bottomSheet');
+            const icon = document.getElementById('sheetToggleIcon');
+            const header = document.getElementById('mainHeader');
+
+            sheet.classList.remove('sheet-normal', 'sheet-fullscreen', 'sheet-hidden');
+
+            if (state === 'fullscreen') {
+                sheet.classList.add('sheet-fullscreen');
+                if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
+                header.classList.add('header-hidden');
+            } else if (state === 'hidden') {
+                sheet.classList.add('sheet-hidden');
+                if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
+                header.classList.remove('header-hidden');
+            } else {
+                // normal
+                sheet.classList.add('sheet-normal');
+                if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
+                header.classList.remove('header-hidden');
+            }
+        }
+
+        window.cycleBottomSheetState = () => {
+            if (currentSheetState === 'normal') {
+                setBottomSheetState('fullscreen');
+            } else if (currentSheetState === 'fullscreen') {
+                setBottomSheetState('hidden');
+            } else {
+                setBottomSheetState('normal');
+            }
+        };
+
+        window.setSheetState = (state) => setBottomSheetState(state);
+
+        // Touch & Drag Swipe for Bottom Sheet
+        let startY = 0;
+        let currentY = 0;
+
+        function initSwipeGestures() {
+            const dragHandle = document.getElementById('dragHandle');
+            const sheet = document.getElementById('bottomSheet');
+
+            dragHandle.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            dragHandle.addEventListener('touchmove', (e) => {
+                currentY = e.touches[0].clientY;
+            }, { passive: true });
+
+            dragHandle.addEventListener('touchend', () => {
+                const diff = startY - currentY;
+                if (Math.abs(diff) > 30) {
+                    if (diff > 0) {
+                        // Swiped up
+                        if (currentSheetState === 'hidden') setBottomSheetState('normal');
+                        else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
+                    } else {
+                        // Swiped down
+                        if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
+                        else if (currentSheetState === 'normal') setBottomSheetState('hidden');
+                    }
+                }
+                startY = 0; currentY = 0;
+            });
+        }
+
         function formatDateTime12H(timestamp) {
             if (!timestamp) return '';
             const d = new Date(timestamp);
@@ -353,7 +454,7 @@
             const ampm = hours >= 12 ? 'PM' : 'AM';
             
             hours = hours % 12;
-            hours = hours ? hours : 12; // 0 පැය 12 බවට
+            hours = hours ? hours : 12;
             const hoursStr = hours.toString().padStart(2, '0');
             
             return `${year}/${month}/${date} ${hoursStr}:${minutes} ${ampm}`;
@@ -413,27 +514,6 @@
             }
         }
 
-        window.toggleBottomSheet = (forceState = null) => {
-            const sheet = document.getElementById('bottomSheet');
-            const icon = document.getElementById('sheetToggleIcon');
-            
-            if (forceState === 'collapse') {
-                sheet.classList.add('sheet-collapsed');
-                if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-                return;
-            }
-
-            const isCollapsed = sheet.classList.contains('sheet-collapsed');
-            if (isCollapsed) {
-                sheet.classList.remove('sheet-collapsed');
-                if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-            } else {
-                sheet.classList.add('sheet-collapsed');
-                if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-            }
-        };
-
-        // Lightbox Fullscreen image view
         window.openLightbox = (src) => {
             if (!src) return;
             const lbImg = document.getElementById('lightboxImage');
@@ -449,12 +529,12 @@
         window.toggleModalFullscreen = () => {
             const container = document.getElementById('reportModalContainer');
             const icon = document.getElementById('fullscreenIcon');
-            if (container.classList.contains('max-h-[calc(100vh-85px)]')) {
-                container.classList.remove('max-h-[calc(100vh-85px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+            if (container.classList.contains('max-h-[calc(100vh-20px)]')) {
+                container.classList.remove('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.add('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-expand', 'fa-compress');
             } else {
-                container.classList.add('max-h-[calc(100vh-85px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+                container.classList.add('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-compress', 'fa-expand');
             }
@@ -536,6 +616,11 @@
                 tempMarker = L.marker(e.latlng, { icon, zIndexOffset: 2000 }).addTo(map);
                 map.flyTo(e.latlng, 15, { duration: 0.5 });
                 setTimeout(() => openReportModal(null, e.latlng.lat, e.latlng.lng), 400);
+            });
+
+            // Pop-up open වන විට bottom sheet එක hidden කිරීම
+            map.on('popupopen', () => {
+                setBottomSheetState('hidden');
             });
 
             if ("geolocation" in navigator) {
@@ -681,7 +766,6 @@
                     const timeMeta = getTimeMeta(item.timestamp);
                     const safeJson = encodeURIComponent(JSON.stringify(item));
                     
-                    // Clickable image for fullscreen preview inside Leaflet Popup
                     const imgHtml = item.imgData ? `
                         <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="openLightbox('${item.imgData}')">
                             <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200">
@@ -692,7 +776,6 @@
                     
                     const reporterName = item.userName || 'අනනාමික';
                     
-                    // Leaflet Popup UI
                     const popupHtml = `
                         <div class="p-3.5 space-y-2">
                             <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100">
@@ -758,7 +841,6 @@
 
                     const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm cursor-pointer hover:opacity-90 transition" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
                     
-                    // Recent reports card in Bottom Sheet
                     html += `
                     <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
                         <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
@@ -799,8 +881,8 @@
                 return;
             }
 
-            // Modal එක open වෙන විට මෑත කාලීන වාර්තා පහළට (collapse) යැවීම
-            toggleBottomSheet('collapse');
+            setBottomSheetState('hidden');
+            document.getElementById('mainHeader').classList.add('header-hidden');
 
             const form = document.getElementById('elephantForm');
             form.reset(); removeImage();
@@ -831,7 +913,10 @@
 
         window.closeModal = (id) => {
             document.getElementById(id).classList.add('hidden');
-            if (id === 'reportModal' && tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+            if (id === 'reportModal') {
+                document.getElementById('mainHeader').classList.remove('header-hidden');
+                if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+            }
         };
 
         window.triggerEdit = (json) => { map.closePopup(); openReportModal(json); };
@@ -946,6 +1031,7 @@
             checkUserLogin();
             initializeMap();
             connectFirebase();
+            initSwipeGestures();
         });
     </script>
 </body>
