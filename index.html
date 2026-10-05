@@ -23,25 +23,21 @@
             z-index: 1;
         }
         
-        /* පොප්-අප් එක සම්පූර්ණයෙන්ම pointer-events: none කර මැප් එකට ඩ්‍රැග් වීමට ඉඩ සැලසීම */
+        /* පොප්-අප් කන්ටේනර් එක මැප් එකට ටච් යන්න සැලසීම */
         .leaflet-popup {
             pointer-events: none !important;
         }
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            pointer-events: none !important;
+            pointer-events: auto !important;
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .leaflet-popup-content {
-            pointer-events: none !important;
-        }
-        /* බටන් සහ ක්ලෝස් අයිකනය ක්ලික් කිරීමට හැකි වන පරිදි සකස් කිරීම */
-        .leaflet-popup button, 
-        .leaflet-container a.leaflet-popup-close-button {
             pointer-events: auto !important;
         }
         .leaflet-container a.leaflet-popup-close-button {
+            pointer-events: auto !important;
             color: #d9534f;
         }
 
@@ -131,37 +127,43 @@
         `;
 
         marker.bindPopup(popupContent, {
-            autoPan: false
+            autoPan: false,
+            closeOnClick: false, // Map එක වෙනත් තැනක ක්ලික් කළොත් මිස පොප්-අප් එක මත ක්ලික් කරද්දී වැසීම වැළැක්වීමට
+            autoClose: false
         });
 
-        // පොප්-අප් එක විවෘත වූ පසු ටච් ඉවෙන්ට්ස් පාලනය කිරීම
+        // පොප්-අප් එක විවෘත වූ පසු ටච් සහ ඩ්‍රැග් පාලනය කිරීම
         marker.on('popupopen', function(e) {
+            const popupNode = e.popup.getElement();
             const innerBox = document.getElementById('popup-inner-box');
 
-            let startX, startY;
+            let startX = 0, startY = 0;
             let isDragging = false;
 
-            innerBox.addEventListener('touchstart', function(e) {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
+            // පෝප්-අප් එක වැසීම වැළැක්වීමට Leaflet event propagation නැවැත්වීම
+            L.DomEvent.stopPropagation(popupNode);
+            L.DomEvent.disableClickPropagation(popupNode);
+
+            innerBox.addEventListener('touchstart', function(event) {
+                startX = event.touches[0].clientX;
+                startY = event.touches[0].clientY;
                 isDragging = false;
             }, { passive: true });
 
-            innerBox.addEventListener('touchmove', function(e) {
-                let moveX = e.touches[0].clientX;
-                let moveY = e.touches[0].clientY;
+            innerBox.addEventListener('touchmove', function(event) {
+                let moveX = event.touches[0].clientX;
+                let moveY = event.touches[0].clientY;
                 
                 // ඇඟිල්ල ටිකක් හෝ ඈතට ගෙනයනවා නම් (drag කරනවා නම්)
-                if (Math.abs(moveX - startX) > 8 || Math.abs(moveY - startY) > 8) {
+                if (Math.abs(moveX - startX) > 6 || Math.abs(moveY - startY) > 6) {
                     isDragging = true;
                 }
             }, { passive: true });
 
-            innerBox.addEventListener('touchend', function(e) {
-                // ඩ්‍රැග් කර නැතිනම් (ერთ වරක් ටච් කර අතහැරියා නම්)
+            innerBox.addEventListener('touchend', function(event) {
+                // ඩ්‍රැග් කර නැතිනම් (එක් වරක් පමණක් ටච් කර අතහැරියා නම්)
                 if (!isDragging) {
-                    // බටන් එකක් ක්ලික් කළේ නැත්නම් පමණක් 'හෙල්ලො' පණිවිඩය පෙන්වීම
-                    if (e.target.tagName !== 'BUTTON') {
+                    if (event.target.tagName !== 'BUTTON') {
                         alert('හෙල්ලො');
                     }
                 }
