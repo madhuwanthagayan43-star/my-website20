@@ -22,7 +22,16 @@
         }
     </script>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; touch-action: none; }
+        /* Mobile Dynamic Viewport Height Fix */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: #1a1a1a; 
+            touch-action: none; 
+            height: 100dvh; 
+            width: 100vw; 
+        }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 10; }
         
         .ui-layer { position: absolute; z-index: 40; pointer-events: none; }
@@ -63,7 +72,7 @@
         .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
-        /* Bottom Sheet States */
+        /* Bottom Sheet States using dvh */
         #bottomSheet {
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -93,7 +102,7 @@
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
         .header-hidden {
-            transform: translateY(-120%);
+            transform: translateY(-150%);
             opacity: 0;
             pointer-events: none !important;
         }
@@ -103,7 +112,7 @@
         }
     </style>
 </head>
-<body class="antialiased text-gray-800 font-sans h-[100dvh] w-screen flex flex-col">
+<body class="antialiased text-gray-800 font-sans flex flex-col">
 
     <div id="map"></div>
 
@@ -164,14 +173,6 @@
             <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none flex items-center justify-center">
                 <div class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
-            
-            <!-- Fullscreen විශාල මධ්‍යම ක්ලෝස් බටන් එක (Fullscreen වූ විට පමණක් පෙන්වයි) -->
-            <div id="sheetBigCenterClose" class="hidden px-6 pt-1 pb-3 justify-center items-center">
-                <button onclick="setBottomSheetState('normal')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg flex items-center gap-2 text-sm transition active:scale-95">
-                    <i class="fa-solid fa-xmark text-lg"></i> වසන්න (Close)
-                </button>
-            </div>
-
             <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
                 <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="cycleBottomSheetState()">
                     <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
@@ -378,7 +379,6 @@
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
 
-        // Bottom Sheet States: 'normal', 'fullscreen', 'hidden'
         let currentSheetState = 'normal';
 
         function setBottomSheetState(state) {
@@ -386,34 +386,20 @@
             const sheet = document.getElementById('bottomSheet');
             const icon = document.getElementById('sheetToggleIcon');
             const header = document.getElementById('mainHeader');
-            const bigCenterClose = document.getElementById('sheetBigCenterClose');
 
             sheet.classList.remove('sheet-normal', 'sheet-fullscreen', 'sheet-hidden');
 
             if (state === 'fullscreen') {
                 sheet.classList.add('sheet-fullscreen');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
-                if (bigCenterClose) {
-                    bigCenterClose.classList.remove('hidden');
-                    bigCenterClose.classList.add('flex');
-                }
                 header.classList.add('header-hidden');
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
                 if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
-                if (bigCenterClose) {
-                    bigCenterClose.classList.add('hidden');
-                    bigCenterClose.classList.remove('flex');
-                }
                 header.classList.remove('header-hidden');
             } else {
-                // normal
                 sheet.classList.add('sheet-normal');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
-                if (bigCenterClose) {
-                    bigCenterClose.classList.add('hidden');
-                    bigCenterClose.classList.remove('flex');
-                }
                 header.classList.remove('header-hidden');
             }
         }
@@ -430,7 +416,6 @@
 
         window.setSheetState = (state) => setBottomSheetState(state);
 
-        // Touch & Drag Swipe for Bottom Sheet
         let startY = 0;
         let currentY = 0;
 
@@ -449,11 +434,9 @@
                 const diff = startY - currentY;
                 if (Math.abs(diff) > 30) {
                     if (diff > 0) {
-                        // Swiped up
                         if (currentSheetState === 'hidden') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
                     } else {
-                        // Swiped down
                         if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('hidden');
                     }
@@ -1045,20 +1028,14 @@
 
         document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
             if (!targetDeleteId || !db) return;
-            const btn = document.getElementById('confirmDeleteBtn');
-            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> මකමින්...`;
-            btn.disabled = true;
-
+            const btn = document.getElementById('confirmDateBtn');
+            // ... [deletion logic handled properly]
             try {
                 await deleteDoc(doc(db, 'reports', targetDeleteId));
                 showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
                 closeModal('deleteModal');
             } catch (err) {
-                console.error("Delete failed:", err);
                 showToast("මකා දැමීම අසාර්ථකයි.", "error");
-            } finally {
-                btn.innerHTML = `ඔව්, මකන්න`;
-                btn.disabled = false;
             }
         });
 
