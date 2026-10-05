@@ -164,16 +164,20 @@
             <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none flex items-center justify-center">
                 <div class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
+            
+            <!-- Fullscreen විශාල මධ්‍යම ක්ලෝස් බටන් එක (Fullscreen වූ විට පමණක් පෙන්වයි) -->
+            <div id="sheetBigCenterClose" class="hidden px-6 pt-1 pb-3 justify-center items-center">
+                <button onclick="setBottomSheetState('normal')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg flex items-center gap-2 text-sm transition active:scale-95">
+                    <i class="fa-solid fa-xmark text-lg"></i> වසන්න (Close)
+                </button>
+            </div>
+
             <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
                 <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="cycleBottomSheetState()">
                     <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
                 </h2>
                 <div class="flex items-center gap-2">
                     <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
-                    <!-- Fullscreen Close/Minimize Button -->
-                    <button id="sheetCloseBtn" onclick="setBottomSheetState('normal')" class="hidden w-8 h-8 rounded-full bg-gray-200/80 text-gray-700 items-center justify-center hover:bg-gray-300 transition active:scale-95" title="සාමාන්‍ය ප්‍රමාණයට ගෙන එන්න">
-                        <i class="fa-solid fa-xmark text-sm"></i>
-                    </button>
                     <button onclick="cycleBottomSheetState()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="වෙනස් කරන්න">
                         <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
                     </button>
@@ -382,26 +386,34 @@
             const sheet = document.getElementById('bottomSheet');
             const icon = document.getElementById('sheetToggleIcon');
             const header = document.getElementById('mainHeader');
-            const closeBtn = document.getElementById('sheetCloseBtn');
+            const bigCenterClose = document.getElementById('sheetBigCenterClose');
 
             sheet.classList.remove('sheet-normal', 'sheet-fullscreen', 'sheet-hidden');
 
             if (state === 'fullscreen') {
                 sheet.classList.add('sheet-fullscreen');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
-                if (closeBtn) closeBtn.classList.remove('hidden');
-                if (closeBtn) closeBtn.classList.add('flex');
+                if (bigCenterClose) {
+                    bigCenterClose.classList.remove('hidden');
+                    bigCenterClose.classList.add('flex');
+                }
                 header.classList.add('header-hidden');
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
                 if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
-                if (closeBtn) { closeBtn.classList.add('hidden'); closeBtn.classList.remove('flex'); }
+                if (bigCenterClose) {
+                    bigCenterClose.classList.add('hidden');
+                    bigCenterClose.classList.remove('flex');
+                }
                 header.classList.remove('header-hidden');
             } else {
                 // normal
                 sheet.classList.add('sheet-normal');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
-                if (closeBtn) { closeBtn.classList.add('hidden'); closeBtn.classList.remove('flex'); }
+                if (bigCenterClose) {
+                    bigCenterClose.classList.add('hidden');
+                    bigCenterClose.classList.remove('flex');
+                }
                 header.classList.remove('header-hidden');
             }
         }
@@ -636,7 +648,6 @@
                 setTimeout(() => openReportModal(null, e.latlng.lat, e.latlng.lng), 400);
             });
 
-            // Pop-up open වන විට bottom sheet එක hidden කිරීම
             map.on('popupopen', () => {
                 setBottomSheetState('hidden');
             });
