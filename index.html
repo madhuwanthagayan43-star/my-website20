@@ -63,7 +63,7 @@
         .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
-        /* Bottom Sheet 3 States */
+        /* Bottom Sheet States */
         #bottomSheet {
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -161,8 +161,8 @@
 
         <!-- Recent Reports Bottom Sheet -->
         <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col sheet-normal">
-            <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none">
-                <div class="w-14 h-1.5 bg-gray-300 rounded-full mx-auto"></div>
+            <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none flex items-center justify-center">
+                <div class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
             <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
                 <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="cycleBottomSheetState()">
@@ -207,24 +207,24 @@
     <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100vh-20px)] flex flex-col transform transition-all duration-300 translate-y-0">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100vh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
             
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
                     <h3 id="modalTitle" class="text-lg sm:text-xl font-bold text-gray-900">නව වාර්තාවක්</h3>
                     <p class="text-xs text-gray-500 font-medium mt-0.5"><i class="fa-regular fa-calendar-check mr-1"></i> <span id="modalDateTime"></span></p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="toggleModalFullscreen()" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition" title="Full Screen">
+                <div class="flex items-center gap-2 pointer-events-auto">
+                    <button onclick="event.stopPropagation(); toggleModalFullscreen()" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition" title="Full Screen">
                         <i id="fullscreenIcon" class="fa-solid fa-expand text-xs"></i>
                     </button>
-                    <button onclick="closeModal('reportModal')" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
+                    <button onclick="event.stopPropagation(); closeModal('reportModal')" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
                         <i class="fa-solid fa-xmark text-base"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1">
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1 cursor-default" onclick="event.stopPropagation()">
                 <form id="elephantForm" class="space-y-4">
                     <input type="hidden" id="formId">
                     <input type="hidden" id="formLat">
@@ -294,7 +294,7 @@
                 </form>
             </div>
 
-            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
+            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] cursor-default" onclick="event.stopPropagation()">
                 <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition text-sm">අවලංගුයි</button>
                 <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>
@@ -415,7 +415,6 @@
 
         function initSwipeGestures() {
             const dragHandle = document.getElementById('dragHandle');
-            const sheet = document.getElementById('bottomSheet');
 
             dragHandle.addEventListener('touchstart', (e) => {
                 startY = e.touches[0].clientY;
@@ -529,14 +528,24 @@
         window.toggleModalFullscreen = () => {
             const container = document.getElementById('reportModalContainer');
             const icon = document.getElementById('fullscreenIcon');
+            const header = document.getElementById('mainHeader');
+
             if (container.classList.contains('max-h-[calc(100vh-20px)]')) {
                 container.classList.remove('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.add('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-expand', 'fa-compress');
+                header.classList.add('header-hidden');
             } else {
                 container.classList.add('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-compress', 'fa-expand');
+            }
+        };
+
+        window.handleModalClick = (e) => {
+            const container = document.getElementById('reportModalContainer');
+            if (container.classList.contains('max-h-[calc(100vh-20px)]')) {
+                toggleModalFullscreen();
             }
         };
 
@@ -888,6 +897,12 @@
             form.reset(); removeImage();
             const dtStr = formatDateTime12H(Date.now());
             document.getElementById('modalDateTime').innerText = dtStr;
+
+            const container = document.getElementById('reportModalContainer');
+            const icon = document.getElementById('fullscreenIcon');
+            container.classList.add('max-h-[calc(100vh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+            container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
+            icon.className = 'fa-solid fa-expand text-xs';
 
             if (dataStr) {
                 const data = JSON.parse(decodeURIComponent(dataStr));
