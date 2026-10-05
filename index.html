@@ -23,9 +23,7 @@
             z-index: 1;
         }
         
-        /* පොප්-අප් එක සම්පූර්ණයෙන්ම pointer-events: none කර, 
-           අවශ්‍ය බටන් සහ ක්ලෝස් බටන් පමණක් auto කිරීම මඟින් 
-           පොප්-අප් එක මතින් මැප් එක ඩ්‍රැග් කිරීම පහසු කරයි. */
+        /* පොප්-අප් එක සම්පූර්ණයෙන්ම pointer-events: none කර මැප් එකට ඩ්‍රැග් වීමට ඉඩ සැලසීම */
         .leaflet-popup {
             pointer-events: none !important;
         }
@@ -34,17 +32,35 @@
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease-in-out;
         }
         .leaflet-popup-content {
             pointer-events: none !important;
         }
-        /* බටන් ක්ලික් කිරීමට හැකි වන පරිදි පමණක් pointer-events ලබා දීම */
+        /* බටන් සහ ක්ලෝස් අයිකනය ක්ලික් කිරීමට හැකි වන පරිදි සකස් කිරීම */
         .leaflet-popup button, 
         .leaflet-container a.leaflet-popup-close-button {
             pointer-events: auto !important;
         }
         .leaflet-container a.leaflet-popup-close-button {
             color: #d9534f;
+        }
+
+        /* Full Screen Popup එක සඳහා CSS පන්තිය */
+        .leaflet-popup-content-wrapper.fullscreen-popup {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 90vw !important;
+            max-width: 400px !important;
+            height: auto !important;
+            max-height: 80vh !important;
+            z-index: 9999 !important;
+            pointer-events: auto !important;
+        }
+        .leaflet-popup-content-wrapper.fullscreen-popup .leaflet-popup-content {
+            pointer-events: auto !important;
         }
 
         /* යටින් ඇති මෑත කාලීන වාර්තා Bottom Sheet එක */
@@ -118,7 +134,7 @@
         const marker = L.marker([7.95, 80.85]).addTo(map);
 
         const popupContent = `
-            <div style="min-width: 200px;">
+            <div id="popup-inner-box" style="min-width: 200px;">
                 <h3 style="margin: 0 0 10px 0; color: #d9534f; font-size: 14px;">⚠️ ස්ථාන අවදානම්</h3>
                 <p style="margin: 5px 0;"><strong>වාර්තාකරු:</strong> ගයාන්</p>
                 <p style="margin: 5px 0;"><strong>දිනය/වේලාව:</strong> 2026/10/05 05:43 PM</p>
@@ -133,7 +149,41 @@
         `;
 
         marker.bindPopup(popupContent, {
-            autoPan: false // පොප්-අප් එක විවෘත වන විට මැප් එක ස්වයංක්‍රීයව පෑන් වීම වැළැක්වීමට
+            autoPan: false
+        });
+
+        // පොප්-අප් එක විවෘත වූ පසු එකවරක් ක්ලික් කළ විට Full Screen වීමට සහ Drag කිරීමට සකස් කිරීම
+        marker.on('popupopen', function(e) {
+            const popup = e.popup;
+            const wrapper = popup.getElement().querySelector('.leaflet-popup-content-wrapper');
+            const innerBox = document.getElementById('popup-inner-box');
+
+            let isDragging = false;
+            let startX, startY;
+
+            // ටච් එක ආරම්භ වන විට
+            innerBox.addEventListener('touchstart', function(e) {
+                isDragging = false;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            // ටච් කරමින් අඳින විට (Drag)
+            innerBox.addEventListener('touchmove', function(e) {
+                let moveX = e.touches[0].clientX;
+                let moveY = e.touches[0].clientY;
+                if (Math.abs(moveX - startX) > 10 || Math.abs(moveY - startY) > 10) {
+                    isDragging = true; // ඩ්‍රැග් කරන බව තහවුරු වේ
+                }
+            }, { passive: true });
+
+            // ටච් එක ඉවත් කළ විට (Tap / Click කිරීම)
+            innerBox.addEventListener('touchend', function(e) {
+                if (!isDragging) {
+                    // ඩ්‍රැග් කර නැතිනම් එකවර ටච් කිරීමක් ලෙස සලකා Full Screen කිරීම
+                    wrapper.classList.toggle('fullscreen-popup');
+                }
+            });
         });
 
         // Bottom Sheet එක ඉහළට/පහළට හැසිරවීම සහ පොප්-අප් එක වැසීම
@@ -144,7 +194,6 @@
             
             if (sheet.classList.contains('expanded')) {
                 icon.textContent = '▼';
-                // මෑත කාලීන වාර්තා ඉහළට ගත් විට පොප්-අප් එක වැසී යාමට
                 map.closePopup();
             } else {
                 icon.textContent = '▲';
