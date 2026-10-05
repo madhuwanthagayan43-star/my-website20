@@ -23,18 +23,27 @@
             z-index: 1;
         }
         
-        /* Leaflet popup container එක හරහා touch/mouse events මැප් එකට යාමට සැලසීම */
+        /* පොප්-අප් එක සම්පූර්ණයෙන්ම pointer-events: none කර, 
+           අවශ්‍ය බටන් සහ ක්ලෝස් බටන් පමණක් auto කිරීම මඟින් 
+           පොප්-අප් එක මතින් මැප් එක ඩ්‍රැග් කිරීම පහසු කරයි. */
         .leaflet-popup {
             pointer-events: none !important;
         }
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            pointer-events: auto !important;
+            pointer-events: none !important;
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
+        .leaflet-popup-content {
+            pointer-events: none !important;
+        }
+        /* බටන් ක්ලික් කිරීමට හැකි වන පරිදි පමණක් pointer-events ලබා දීම */
+        .leaflet-popup button, 
         .leaflet-container a.leaflet-popup-close-button {
             pointer-events: auto !important;
+        }
+        .leaflet-container a.leaflet-popup-close-button {
             color: #d9534f;
         }
 
@@ -125,23 +134,6 @@
 
         marker.bindPopup(popupContent, {
             autoPan: false // පොප්-අප් එක විවෘත වන විට මැප් එක ස්වයංක්‍රීයව පෑන් වීම වැළැක්වීමට
-        });
-
-        // පොප්-අප් එක විවෘත වූ විට touch events map එකට pass වීමට අවශ්‍ය DOM listeners සැකසීම
-        marker.on('popupopen', function(e) {
-            const popupNode = e.popup.getElement();
-            if (popupNode) {
-                // Leaflet මඟින් default click/scroll block කිරීම නවතා, background map එකට drag වීමට ඉඩ සැලසීම
-                L.DomEvent.disableScrollPropagation(popupNode);
-                
-                // Form එකේ හිස් තැන් වලදී drag කිරීමට map එකට touch events ලබා දීම
-                popupNode.addEventListener('touchstart', function(event) {
-                    if (event.target === popupNode || event.target.classList.contains('leaflet-popup-content') || event.target.tagName === 'DIV' && !event.target.closest('button')) {
-                        // මෙහිදී touch එක map එක වෙත යොමු කරයි
-                        map.dragging._enable();
-                    }
-                }, { passive: true });
-            }
         });
 
         // Bottom Sheet එක ඉහළට/පහළට හැසිරවීම සහ පොප්-අප් එක වැසීම
