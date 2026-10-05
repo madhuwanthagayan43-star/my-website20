@@ -38,6 +38,7 @@
         .leaflet-popup-pane { z-index: 1000 !important; }
         .leaflet-control-container { z-index: 60 !important; }
         
+        /* සාමාන්‍ය Leaflet Popup ස්ටෑන්ඩර්ඩ් සහ Touch පාලනය */
         .leaflet-popup {
             pointer-events: none !important;
         }
@@ -238,7 +239,7 @@
     <!-- Report Modal (Full Screen View) -->
     <div id="fullscreen-modal" class="hidden fixed inset-0 w-screen h-screen bg-white z-[99999] flex-col p-5 box-border pointer-events-auto">
         <div class="flex justify-between items-center border-b border-gray-200 pb-4 mb-5">
-            <h2 class="text-xl font-bold text-red-600 m-0">⚠️️ ස්ථාන අවදානම් විස්තර</h2>
+            <h2 class="text-xl font-bold text-red-600 m-0">⚠️ ස්ථාන අවදානම් විස්තර</h2>
             <button class="bg-red-600 text-white border-none px-4 py-2 rounded-md text-base cursor-pointer" onclick="closeFullscreenModal()">ආපසු</button>
         </div>
         <div id="fullscreen-modal-body" class="text-base leading-relaxed overflow-y-auto flex-1">
@@ -889,6 +890,7 @@
                             autoClose: false
                         });
 
+                        // මුල් කේතයේ තිබූ Popup Touch & Drag පාලන ක්‍රමය මෙහි සම්බන්ධ කර ඇත
                         newMarker.on('popupopen', function(e) {
                             const innerBox = document.getElementById(`popup-inner-box-${item.id}`);
                             if (!innerBox) return;
@@ -919,6 +921,7 @@
                                 
                                 if (!isDragging && touchDuration < 300) {
                                     if (event.target.tagName !== 'BUTTON' && !event.target.closest('button')) {
+                                        // Fullscreen Modal එක විවෘත කිරීම
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
                                         fullModalBody.innerHTML = `
                                             <p><strong>වාර්තාකරු:</strong> ${reporterName}</p>
