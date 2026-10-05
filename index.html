@@ -22,7 +22,6 @@
         }
     </script>
     <style>
-        /* Mobile Dynamic Viewport Height Fix */
         body { 
             margin: 0; 
             padding: 0; 
@@ -72,7 +71,6 @@
         .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
-        /* Bottom Sheet States using dvh */
         #bottomSheet {
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -97,7 +95,6 @@
             transform: translateY(calc(100% - 56px)) !important;
         }
 
-        /* Top Header Hide Transition */
         #mainHeader {
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
@@ -107,9 +104,7 @@
             pointer-events: none !important;
         }
 
-        .modal-top-safe {
-            top: 0px;
-        }
+        .modal-top-safe { top: 0px; }
     </style>
 </head>
 <body class="antialiased text-gray-800 font-sans flex flex-col">
@@ -185,7 +180,6 @@
                 </div>
             </div>
             
-            <!-- Report List -->
             <div id="reportsListContainer" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3 pb-6">
                 <div class="flex flex-col items-center justify-center h-full text-gray-400">
                     <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-green-500"></i>
@@ -377,8 +371,7 @@
         let mapMarkers = {}; 
         let targetDeleteId = null;
 
-        const EXPIRE_TIME_MS = 30 * 60 * 1000; // මිනිත්තු 30 යි
-
+        const EXPIRE_TIME_MS = 30 * 60 * 1000;
         let currentSheetState = 'normal';
 
         function setBottomSheetState(state) {
@@ -848,7 +841,21 @@
                                 </div>
                             </div>`;
                         const customIcon = L.divIcon({ className:'', html: markerHtml, iconSize: [48,48], iconAnchor: [24,24], popupAnchor: [0, -20] });
-                        mapMarkers[item.id] = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map).bindPopup(popupHtml);
+                        
+                        const marker = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map);
+                        const popup = L.popup({ bubblingMouseEvents: true }).setContent(popupHtml);
+                        marker.bindPopup(popup);
+
+                        // Allow map dragging even when interacting with the popup container background
+                        marker.on('popupopen', (e) => {
+                            const popupNode = e.popup.getElement();
+                            if (popupNode) {
+                                L.DomEvent.disableClickPropagation(popupNode);
+                                L.DomEvent.disableScrollPropagation(popupNode);
+                            }
+                        });
+
+                        mapMarkers[item.id] = marker;
                     }
 
                     const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm cursor-pointer hover:opacity-90 transition" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
@@ -1028,8 +1035,6 @@
 
         document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
             if (!targetDeleteId || !db) return;
-            const btn = document.getElementById('confirmDateBtn');
-            // ... [deletion logic handled properly]
             try {
                 await deleteDoc(doc(db, 'reports', targetDeleteId));
                 showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
