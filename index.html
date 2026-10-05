@@ -42,17 +42,26 @@
             color: #d9534f;
         }
 
-        /* Full Screen Popup එක සඳහා CSS පන්තිය */
+        /* දුරකථනයේ මුළු ඩිස්ප්ලේ එකම ආවරණය වන Full Screen Popup CSS පන්තිය */
         .leaflet-popup-content-wrapper.fullscreen-popup {
             position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 90vw !important;
-            max-width: 400px !important;
-            height: auto !important;
-            max-height: 80vh !important;
-            z-index: 9999 !important;
+            top: 0 !important;
+            left: 0 !important;
+            transform: none !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            border-radius: 0 !important;
+            z-index: 99999 !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .leaflet-popup-content-wrapper.fullscreen-popup .leaflet-popup-content {
+            width: 90% !important;
+            max-width: 500px;
         }
 
         /* යටින් ඇති මෑත කාලීන වාර්තා Bottom Sheet එක */
@@ -127,15 +136,15 @@
 
         const popupContent = `
             <div id="popup-inner-box" style="min-width: 200px;">
-                <h3 style="margin: 0 0 10px 0; color: #d9534f; font-size: 14px;">⚠️ ස්ථාන අවදානම්</h3>
-                <p style="margin: 5px 0;"><strong>වාර්තාකරු:</strong> ගයාන්</p>
-                <p style="margin: 5px 0;"><strong>දිනය/වේලාව:</strong> 2026/10/05 05:43 PM</p>
-                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                <p style="margin: 5px 0;"><strong>ස්ථානයේ විස්තරය:</strong><br>සිරිපාලගම</p>
-                <p style="margin: 5px 0;"><strong>අලි ගණන:</strong> 1</p>
-                <div style="margin-top: 10px; display: flex; gap: 5px;">
-                    <button style="flex: 1; padding: 6px; background: #f0f0f0; border: none; border-radius: 4px; cursor: pointer;" onclick="event.stopPropagation();">වෙනස්</button>
-                    <button style="flex: 1; padding: 6px; background: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="event.stopPropagation();">මකන්න</button>
+                <h3 style="margin: 0 0 10px 0; color: #d9534f; font-size: 16px;">⚠️ ස්ථාන අවදානම්</h3>
+                <p style="margin: 8px 0;"><strong>වාර්තාකරු:</strong> ගයාන්</p>
+                <p style="margin: 8px 0;"><strong>දිනය/වේලාව:</strong> 2026/10/05 05:43 PM</p>
+                <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                <p style="margin: 8px 0;"><strong>ස්ථානයේ විස්තරය:</strong><br>සිරිපාලගම</p>
+                <p style="margin: 8px 0;"><strong>අලි ගණන:</strong> 1</p>
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button style="flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;" onclick="event.stopPropagation();">වෙනස්</button>
+                    <button style="flex: 1; padding: 10px; background: #d9534f; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;" onclick="event.stopPropagation();">මකන්න</button>
                 </div>
             </div>
         `;
@@ -177,7 +186,7 @@
             innerBox.addEventListener('touchend', function(event) {
                 let touchDuration = new Date().getTime() - touchStartTime;
                 
-                // ඩ්‍රැග් කර නැතිනම් සහ ඉක්මනින් ටච් කර අතහැරියා නම් පමණක් Full Screen කිරීම
+                // ඩ්‍රැග් කර නැතිනම් සහ ඉක්මනින් ටච් කර අතහැරියා නම් පමණක් මුළු ඩිස්ප්ලේ එකම ආවරණය වන ලෙස Full Screen කිරීම
                 if (!isDragging && touchDuration < 300) {
                     if (event.target.tagName !== 'BUTTON') {
                         wrapper.classList.toggle('fullscreen-popup');
