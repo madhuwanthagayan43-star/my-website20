@@ -161,18 +161,30 @@
 
         <!-- Recent Reports Bottom Sheet -->
         <div id="bottomSheet" class="pointer-events-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.2)] border-t border-white/80 flex flex-col sheet-normal">
+            <!-- Drag Handle / Normal Header Bar -->
             <div id="dragHandle" class="w-full pt-3 pb-2 cursor-pointer select-none touch-none flex items-center justify-center">
-                <div class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
+                <div id="sheetIndicatorBar" class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
-            <div class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
-                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2 cursor-pointer" onclick="cycleBottomSheetState()">
+            
+            <!-- Fullscreen Header with Close Button (Hidden by default, shown in fullscreen) -->
+            <div id="fullscreenHeader" class="hidden px-6 pt-2 pb-2 justify-between items-center border-b border-gray-100/50 bg-gray-50/50">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
+                </h2>
+                <div class="flex items-center gap-3">
+                    <span id="reportCountBadgeFull" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
+                    <button onclick="setSheetState('normal')" class="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition active:scale-95 shadow-sm" title="වසන්න">
+                        <i class="fa-solid fa-xmark text-base font-bold"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="normalHeader" class="px-6 pb-3 flex justify-between items-center border-b border-gray-100/50">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
                     <i class="fa-solid fa-clock-rotate-left text-green-600"></i> මෑත කාලීන වාර්තා
                 </h2>
                 <div class="flex items-center gap-2">
                     <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
-                    <button onclick="cycleBottomSheetState()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition" title="වෙනස් කරන්න">
-                        <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
-                    </button>
                 </div>
             </div>
             
@@ -376,40 +388,41 @@
         function setBottomSheetState(state) {
             currentSheetState = state;
             const sheet = document.getElementById('bottomSheet');
-            const icon = document.getElementById('sheetToggleIcon');
             const header = document.getElementById('mainHeader');
+            const normalHeader = document.getElementById('normalHeader');
+            const fullscreenHeader = document.getElementById('fullscreenHeader');
+            const dragHandle = document.getElementById('dragHandle');
 
             sheet.classList.remove('sheet-normal', 'sheet-fullscreen', 'sheet-hidden');
 
             if (state === 'fullscreen') {
                 sheet.classList.add('sheet-fullscreen');
-                if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.add('header-hidden');
+                dragHandle.classList.add('hidden');
+                normalHeader.classList.add('hidden');
+                fullscreenHeader.classList.remove('hidden');
+                fullscreenHeader.classList.add('flex');
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
-                if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
                 header.classList.remove('header-hidden');
+                dragHandle.classList.remove('hidden');
+                normalHeader.classList.remove('hidden');
+                fullscreenHeader.classList.add('hidden');
+                fullscreenHeader.classList.remove('flex');
             } else {
                 // normal
                 sheet.classList.add('sheet-normal');
-                if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.remove('header-hidden');
+                dragHandle.classList.remove('hidden');
+                normalHeader.classList.remove('hidden');
+                fullscreenHeader.classList.add('hidden');
+                fullscreenHeader.classList.remove('flex');
             }
         }
 
-        window.cycleBottomSheetState = () => {
-            if (currentSheetState === 'normal') {
-                setBottomSheetState('fullscreen');
-            } else if (currentSheetState === 'fullscreen') {
-                setBottomSheetState('hidden');
-            } else {
-                setBottomSheetState('normal');
-            }
-        };
-
         window.setSheetState = (state) => setBottomSheetState(state);
 
-        // Touch & Drag Swipe for Bottom Sheet
+        // Touch & Drag Swipe for Bottom Sheet (Only via Drag Handle or Swiping Up/Down)
         let startY = 0;
         let currentY = 0;
 
@@ -428,11 +441,11 @@
                 const diff = startY - currentY;
                 if (Math.abs(diff) > 30) {
                     if (diff > 0) {
-                        // Swiped up
+                        // Swiped up -> Fullscreen
                         if (currentSheetState === 'hidden') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
                     } else {
-                        // Swiped down
+                        // Swiped down -> Hidden or Normal
                         if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('hidden');
                     }
@@ -627,7 +640,6 @@
                 setTimeout(() => openReportModal(null, e.latlng.lat, e.latlng.lng), 400);
             });
 
-            // Pop-up open වන විට bottom sheet එක hidden කිරීම
             map.on('popupopen', () => {
                 setBottomSheetState('hidden');
             });
@@ -761,6 +773,9 @@
 
         function refreshDataUI() {
             document.getElementById('reportCountBadge').innerText = reportsData.length;
+            const countBadgeFull = document.getElementById('reportCountBadgeFull');
+            if(countBadgeFull) countBadgeFull.innerText = reportsData.length;
+
             const activeIds = reportsData.map(r => r.id);
             Object.keys(mapMarkers).forEach(id => {
                 if (!activeIds.includes(id)) { map.removeLayer(mapMarkers[id]); delete mapMarkers[id]; }
