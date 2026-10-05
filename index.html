@@ -71,6 +71,31 @@
         .leaflet-popup-content { margin: 0; width: 280px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #666; background: rgba(255,255,255,0.8); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;}
 
+        /* Popup Fullscreen Styles */
+        .leaflet-popup-pane .leaflet-popup.popup-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            margin: 0 !important;
+            transform: none !important;
+            z-index: 9999 !important;
+        }
+        .leaflet-popup-pane .leaflet-popup.popup-fullscreen .leaflet-popup-content-wrapper {
+            width: 100vw !important;
+            height: 100dvh !important;
+            border-radius: 0 !important;
+            overflow-y: auto !important;
+        }
+        .leaflet-popup-pane .leaflet-popup.popup-fullscreen .leaflet-popup-content {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .leaflet-popup-pane .leaflet-popup.popup-fullscreen .leaflet-popup-tip-container {
+            display: none !important;
+        }
+
         #bottomSheet {
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -429,12 +454,10 @@
                 const diff = startY - currentY;
                 if (Math.abs(diff) > 30) {
                     if (diff > 0) {
-                        // ඉහළට ඇදීම (Swipe Up) - සිතියමේ පොප්-අප් එක වැසීමට
                         map.closePopup();
                         if (currentSheetState === 'hidden') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
                     } else {
-                        // පහළට ඇදීම (Swipe Down)
                         if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('hidden');
                     }
@@ -787,8 +810,20 @@
                     const reporterName = item.userName || 'අනනාමික';
                     
                     const popupHtml = `
-                        <div class="p-3.5 space-y-2">
-                            <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100">
+                        <div class="p-3.5 space-y-2 popup-inner-content">
+                            <!-- Fullscreen Header / Close Bar (Visible only in fullscreen mode) -->
+                            <div class="popup-fs-header hidden items-center justify-between pb-3 border-b border-gray-100 mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold px-2.5 py-1 rounded-md border ${theme.class}">
+                                        <i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}
+                                    </span>
+                                </div>
+                                <button onclick="exitPopupFullscreen(event, '${item.id}')" class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-700 active:scale-95 transition pointer-events-auto">
+                                    <i class="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100 popup-normal-header">
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}">
                                     <i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}
                                 </span>
@@ -828,9 +863,9 @@
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
 
-                            <div class="flex gap-2 pt-1">
-                                <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
-                                <button onclick="triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
+                            <div class="flex gap-2 pt-1 pointer-events-auto">
+                                <button type="button" onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
+                                <button type="button" onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
                             </div>
                         </div>`;
 
@@ -846,7 +881,62 @@
                                 </div>
                             </div>`;
                         const customIcon = L.divIcon({ className:'', html: markerHtml, iconSize: [48,48], iconAnchor: [24,24], popupAnchor: [0, -20] });
-                        mapMarkers[item.id] = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map).bindPopup(popupHtml);
+                        
+                        // අදාළ අවශ්‍යතා මත autoPan: false, closeOnClick: false, autoClose: false සකසා ඇත
+                        const marker = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map);
+                        marker.bindPopup(popupHtml, {
+                            autoPan: false,
+                            closeOnClick: false,
+                            autoClose: false
+                        });
+
+                        // Popup එක විවෘත වූ පසු අන්තර්ක්‍රියාකාරී හැසිරීම් (Drag & Single Tap Fullscreen) එක් කිරීම
+                        marker.on('popupopen', (e) => {
+                            const popupObj = e.popup;
+                            const el = popupObj.getElement();
+                            if (!el) return;
+
+                            const contentWrapper = el.querySelector('.leaflet-popup-content-wrapper');
+                            if (!contentWrapper) return;
+
+                            // 1. Drag / Pan පහසුකම සහ Single Tap Fullscreen සඳහා event listeners එකතු කිරීම
+                            let isDragging = false;
+                            let startX = 0, startY = 0;
+
+                            contentWrapper.onpointerdown = (pe) => {
+                                isDragging = false;
+                                startX = pe.clientX;
+                                startY = pe.clientY;
+                            };
+
+                            contentWrapper.onpointermove = (pe) => {
+                                if (Math.abs(pe.clientX - startX) > 8 || Math.abs(pe.clientY - startY) > 8) {
+                                    isDragging = true;
+                                }
+                            };
+
+                            contentWrapper.onpointerup = (pe) => {
+                                if (!isDragging) {
+                                    // Single Tap සිදු වූ විට Full-Screen Mode වෙත මාරුවීම
+                                    if (!contentWrapper.classList.contains('is-fullscreen-wrapper')) {
+                                        contentWrapper.classList.add('is-fullscreen-wrapper');
+                                        popupObj._container.classList.add('popup-fullscreen');
+                                        
+                                        // Fullscreen UI පෙන්වීම
+                                        const fsHeader = contentWrapper.querySelector('.popup-fs-header');
+                                        const normalHeader = contentWrapper.querySelector('.popup-normal-header');
+                                        if (fsHeader) fsHeader.classList.replace('hidden', 'flex');
+                                        if (normalHeader) normalHeader.classList.add('hidden');
+                                        
+                                        // සිතියමේ උඩ Header එක සැඟවීම
+                                        document.getElementById('mainHeader').classList.add('header-hidden');
+                                    }
+                                }
+                                isDragging = false;
+                            };
+                        });
+
+                        mapMarkers[item.id] = marker;
                     }
 
                     const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm cursor-pointer hover:opacity-90 transition" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
@@ -878,6 +968,31 @@
                 document.getElementById('reportsListContainer').innerHTML = html;
             }
         }
+
+        // Fullscreen Mode එකෙන් ඉවත් වීමේ ශ්‍රිතය (Exit Fullscreen)
+        window.exitPopupFullscreen = (e, id) => {
+            e.stopPropagation();
+            if (mapMarkers[id]) {
+                const marker = mapMarkers[id];
+                const popup = marker.getPopup();
+                if (popup) {
+                    const el = popup.getElement();
+                    if (el) {
+                        const contentWrapper = el.querySelector('.leaflet-popup-content-wrapper');
+                        if (contentWrapper) {
+                            contentWrapper.classList.remove('is-fullscreen-wrapper');
+                            el.classList.remove('popup-fullscreen');
+                            
+                            const fsHeader = contentWrapper.querySelector('.popup-fs-header');
+                            const normalHeader = contentWrapper.querySelector('.popup-normal-header');
+                            if (fsHeader) fsHeader.classList.replace('flex', 'hidden');
+                            if (normalHeader) normalHeader.classList.remove('hidden');
+                        }
+                    }
+                }
+            }
+            document.getElementById('mainHeader').classList.remove('header-hidden');
+        };
 
         window.flyAndOpen = (id, lat, lng) => {
             map.flyTo([lat, lng], 17, { duration: 1 });
