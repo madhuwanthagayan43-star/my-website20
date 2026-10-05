@@ -172,7 +172,7 @@
                     <span id="reportCountBadge" class="text-xs bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full font-bold shadow-sm">0</span>
                     
                     <!-- Fullscreen Close / Minimize Button (Visible only when in fullscreen) -->
-                    <button id="sheetCloseBtn" onclick="setSheetState('normal')" class="hidden w-8 h-8 rounded-full bg-red-100 text-red-600 items-center justify-center hover:bg-red-200 transition" title="සාමාන්‍ය ප්‍රමාණයට හරවන්න">
+                    <button id="sheetCloseBtn" onclick="setSheetState('normal')" class="hidden w-8 h-8 rounded-full bg-red-100 text-red-600 items-center justify-center hover:bg-red-200 transition shadow-sm" title="සාමාන්‍ය ප්‍රමාණයට හරවන්න">
                         <i class="fa-solid fa-xmark text-xs font-bold"></i>
                     </button>
 
@@ -392,18 +392,27 @@
                 sheet.classList.add('sheet-fullscreen');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.add('header-hidden');
-                if (sheetCloseBtn) sheetCloseBtn.classList.replace('hidden', 'flex');
+                if (sheetCloseBtn) {
+                    sheetCloseBtn.classList.remove('hidden');
+                    sheetCloseBtn.classList.add('flex');
+                }
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
                 if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
                 header.classList.remove('header-hidden');
-                if (sheetCloseBtn) sheetCloseBtn.classList.replace('flex', 'hidden');
+                if (sheetCloseBtn) {
+                    sheetCloseBtn.classList.remove('flex');
+                    sheetCloseBtn.classList.add('hidden');
+                }
             } else {
                 // normal
                 sheet.classList.add('sheet-normal');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.remove('header-hidden');
-                if (sheetCloseBtn) sheetCloseBtn.classList.replace('flex', 'hidden');
+                if (sheetCloseBtn) {
+                    sheetCloseBtn.classList.remove('flex');
+                    sheetCloseBtn.classList.add('hidden');
+                }
             }
         }
 
@@ -637,7 +646,6 @@
                 setTimeout(() => openReportModal(null, e.latlng.lat, e.latlng.lng), 400);
             });
 
-            // Pop-up open වන විට bottom sheet එක hidden කිරීම
             map.on('popupopen', () => {
                 setBottomSheetState('hidden');
             });
