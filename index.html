@@ -213,6 +213,11 @@
         
         <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
             
+            <!-- Drag Handle for Modal -->
+            <div id="modalDragHandle" class="w-full pt-3 pb-1 cursor-grab active:cursor-grabbing select-none touch-none flex items-center justify-center sm:hidden">
+                <div class="w-14 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
                     <h3 id="modalTitle" class="text-lg sm:text-xl font-bold text-gray-900">නව වාර්තාවක්</h3>
@@ -429,17 +434,44 @@
                 const diff = startY - currentY;
                 if (Math.abs(diff) > 30) {
                     if (diff > 0) {
-                        // ඉහළට ඇදීම (Swipe Up) - සිතියමේ පොප්-අප් එක වැසීමට
                         map.closePopup();
                         if (currentSheetState === 'hidden') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('fullscreen');
                     } else {
-                        // පහළට ඇදීම (Swipe Down)
                         if (currentSheetState === 'fullscreen') setBottomSheetState('normal');
                         else if (currentSheetState === 'normal') setBottomSheetState('hidden');
                     }
                 }
                 startY = 0; currentY = 0;
+            });
+
+            // Report Modal Drag / Swipe Gesture to close or expand
+            const modalDragHandle = document.getElementById('modalDragHandle');
+            let modalStartY = 0;
+            let modalCurrentY = 0;
+
+            modalDragHandle.addEventListener('touchstart', (e) => {
+                modalStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            modalDragHandle.addEventListener('touchmove', (e) => {
+                modalCurrentY = e.touches[0].clientY;
+            }, { passive: true });
+
+            modalDragHandle.addEventListener('touchend', () => {
+                const diff = modalCurrentY - modalStartY;
+                if (diff > 50) {
+                    // පහළට ඇදූ විට මෝඩල් එක වැසීම
+                    closeModal('reportModal');
+                } else if (diff < -50) {
+                    // ඉහළට ඇදූ විට Full Screen කිරීම
+                    const container = document.getElementById('reportModalContainer');
+                    const icon = document.getElementById('fullscreenIcon');
+                    if (!container.classList.contains('h-full')) {
+                        toggleModalFullscreen();
+                    }
+                }
+                modalStartY = 0; modalCurrentY = 0;
             });
         }
 
