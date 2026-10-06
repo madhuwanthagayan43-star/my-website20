@@ -52,7 +52,7 @@
         .leaflet-popup-content {
             pointer-events: auto !important;
             margin: 0;
-            width: 290px !important;
+            width: 280px !important;
         }
         .leaflet-container a.leaflet-popup-close-button {
             pointer-events: auto !important;
@@ -67,7 +67,6 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            z-index: 10;
         }
 
         .live-location-dot {
@@ -94,7 +93,7 @@
             to { transform: translateY(-12px) scale(1.1); }
         }
 
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
@@ -388,6 +387,26 @@
         </div>
     </div>
 
+    <!-- Comment Edit/Delete Confirmation Modal -->
+    <div id="commentActionModal" class="hidden fixed inset-0 z-[170] flex items-center justify-center pointer-events-auto backdrop-blur-sm bg-gray-900/70 px-4">
+        <div class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                <i class="fa-solid fa-comments"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">අදහස් දැක්වීම කළමනාකරණය</h3>
+            <p class="text-xs text-gray-500 mb-6 font-medium">මෙම අදහසට ඔබ කිරීමට කැමති කුමක්ද?</p>
+            <div class="space-y-2.5">
+                <button id="commentEditBtn" class="w-full py-3 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-pen"></i> සංස්කරණය කරන්න
+                </button>
+                <button id="commentDeleteBtn" class="w-full py-3 rounded-xl bg-red-50 text-red-700 font-bold hover:bg-red-100 transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trash"></i> මකා දමන්න
+                </button>
+                <button onclick="closeModal('commentActionModal')" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition text-sm">අවලංගුයි</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
 
     <!-- Firebase SDK v12 -->
@@ -406,6 +425,9 @@
         };
 
         let app, db, currentUser = { uid: "web-user" };
+        let currentUserId = localStorage.getItem('elephantWatchUserId') || 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('elephantWatchUserId', currentUserId);
+
         let currentUserName = localStorage.getItem('elephantWatchUserName') || '';
         let map, userMarker, tempMarker;
         let reportsData = [];
@@ -457,6 +479,8 @@
 
         function initSwipeGestures() {
             const dragHandle = document.getElementById('dragHandle');
+            if(!dragHandle) return;
+
             dragHandle.addEventListener('touchstart', (e) => {
                 startY = e.touches[0].clientY;
             }, { passive: true });
@@ -800,97 +824,146 @@
             }
         }, 1000);
 
-        // Comment Functions
-        window.submitComment = async (reportId, event) => {
-            event.preventDefault();
+        // Comments Handling Functions
+        window.postComment = async (reportId, isFullscreen = false) => {
             if (!currentUserName) {
                 openNameChangeModal();
                 showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
                 return;
             }
-            const inputEl = document.getElementById(`comment-input-${reportId}`);
+
+            const inputId = isFullscreen ? `comment-input-full-${reportId}` : `comment-input-popup-${reportId}`;
+            const inputEl = document.getElementById(inputId);
+            if (!inputEl) return;
+
             const commentText = inputEl.value.trim();
             if (!commentText) return;
 
-            const item = reportsData.find(r => r.id === reportId);
-            if (!item) return;
+            const report = reportsData.find(r => r.id === reportId);
+            if (!report) return;
 
-            if (!item.comments) item.comments = [];
-            
+            let comments = report.comments || [];
             const newComment = {
-                id: 'c_' + Date.now() + Math.random().toString(36.substring(2, 7)),
-                name: currentUserName,
-                userId: currentUser.uid, // සාමාන්‍ය පරිශීලක හැඳුනුම්පත (මෙහිදී currentUserName එකම හරහා සංස්කරණ පාලනය කෙරේ)
+                id: 'c_' + Math.random().toString(36).substr(2, 9),
+                userId: currentUserId,
+                userName: currentUserName,
                 text: commentText,
                 timestamp: Date.now()
             };
 
-            // නව අදහස ලැයිස්තුවේ ඉහළට (unshift) එකතු කිරීම
-            item.comments.unshift(newComment);
+            // නව අදහස් දැක්වීම ලැයිස්තුවේ ඉහළින්ම එකතු කිරීම
+            comments.unshift(newComment);
 
             try {
-                await updateDoc(doc(db, 'reports', reportId), { comments: item.comments });
+                const reportRef = doc(db, 'reports', reportId);
+                await updateDoc(reportRef, { comments: comments });
                 inputEl.value = '';
                 showToast("අදහස් දැක්වීම සාර්ථකව එකතු කරන ලදී.");
-                refreshDataUI();
             } catch (err) {
-                console.error("Comment add failed:", err);
-                showToast("અදහස එක් කිරීම අසාර්ථකයි.", "error");
+                console.error("Comment error:", err);
+                showToast("අදහස එකතු කිරීම අසාර්ථකයි.", "error");
             }
         };
 
-        window.deleteComment = async (reportId, commentId) => {
-            const item = reportsData.find(r => r.id === reportId);
-            if (!item || !item.comments) return;
+        window.openCommentActionModal = (reportId, commentId, currentText) => {
+            const actionModal = document.getElementById('commentActionModal');
+            actionModal.classList.remove('hidden');
 
-            item.comments = item.comments.filter(c => c.id !== commentId);
+            document.getElementById('commentDeleteBtn').onclick = async () => {
+                actionModal.classList.add('hidden');
+                await deleteComment(reportId, commentId);
+            };
 
+            document.getElementById('commentEditBtn').onclick = async () => {
+                actionModal.classList.add('hidden');
+                const newText = prompt("අදහස් දැක්වීම සංස්කරණය කරන්න:", currentText);
+                if (newText !== null && newText.trim() !== "") {
+                    await editComment(reportId, commentId, newText.trim());
+                }
+            };
+        };
+
+        async function deleteComment(reportId, commentId) {
+            const report = reportsData.find(r => r.id === reportId);
+            if (!report || !report.comments) return;
+
+            const updatedComments = report.comments.filter(c => c.id !== commentId);
             try {
-                await updateDoc(doc(db, 'reports', reportId), { comments: item.comments });
+                const reportRef = doc(db, 'reports', reportId);
+                await updateDoc(reportRef, { comments: updatedComments });
                 showToast("අදහස් දැක්වීම මකා දමන ලදී.");
-                refreshDataUI();
             } catch (err) {
                 showToast("මකා දැමීම අසාර්ථකයි.", "error");
             }
-        };
+        }
 
-        window.startEditComment = (reportId, commentId, currentText) => {
-            const commentItemEl = document.getElementById(`comment-item-${commentId}`);
-            if (!commentItemEl) return;
+        async function editComment(reportId, commentId, newText) {
+            const report = reportsData.find(r => r.id === reportId);
+            if (!report || !report.comments) return;
 
-            commentItemEl.innerHTML = `
-                <div class="flex gap-1.5 mt-1">
-                    <input type="text" id="edit-comment-input-${commentId}" value="${currentText}" class="flex-1 px-2 py-1 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-green-500 bg-white text-gray-800">
-                    <button onclick="saveEditComment('${reportId}', '${commentId}')" class="bg-green-600 text-white px-2.5 py-1 text-xs rounded-lg font-bold hover:bg-green-700">යාවත්කාලීන</button>
-                    <button onclick="refreshDataUI()" class="bg-gray-200 text-gray-700 px-2 py-1 text-xs rounded-lg font-bold">අවලංගුයි</button>
-                </div>
-            `;
-        };
-
-        window.saveEditComment = async (reportId, commentId) => {
-            const inputEl = document.getElementById(`edit-comment-input-${commentId}`);
-            if (!inputEl) return;
-            const updatedText = inputEl.value.trim();
-            if (!updatedText) return;
-
-            const item = reportsData.find(r => r.id === reportId);
-            if (!item || !item.comments) return;
-
-            item.comments = item.comments.map(c => {
+            const updatedComments = report.comments.map(c => {
                 if (c.id === commentId) {
-                    return { ...c, text: updatedText, timestamp: Date.now() };
+                    return { ...c, text: newText, timestamp: Date.now() };
                 }
                 return c;
             });
 
             try {
-                await updateDoc(doc(db, 'reports', reportId), { comments: item.comments });
-                showToast("අදහස වෙනස් කරන ලදී.");
-                refreshDataUI();
+                const reportRef = doc(db, 'reports', reportId);
+                await updateDoc(reportRef, { comments: updatedComments });
+                showToast("අදහස් දැක්වීම යාවත්කාලීන කරන ලදී.");
             } catch (err) {
-                showToast("වෙනස් කිරීම අසාර්ථකයි.", "error");
+                showToast("යාවත්කාලීන කිරීම අසාර්ථකයි.", "error");
             }
-        };
+        }
+
+        function generateCommentsHtml(report, isFullscreen = false) {
+            const comments = report.comments || [];
+            const typeKey = isFullscreen ? 'full' : 'popup';
+            
+            let commentsListHtml = '';
+            if (comments.length === 0) {
+                commentsListHtml = `<div class="text-[11px] text-gray-400 text-center py-2">තවම අදහස් දැක්වීම් නොමැත.</div>`;
+            } else {
+                comments.forEach(c => {
+                    const cTime = formatDateTime12H(c.timestamp);
+                    const isOwner = c.userId === currentUserId;
+                    const actionAttr = isOwner ? `onclick="openCommentActionModal('${report.id}', '${c.id}', '${c.text.replace(/'/g, "\\'")}')" title="සංස්කරණය/මකන්න"` : '';
+                    const hoverClass = isOwner ? 'cursor-pointer hover:bg-gray-100/80 border-dashed border-green-200' : '';
+
+                    commentsListHtml += `
+                        <div class="bg-white p-2 rounded-xl border border-gray-200/80 text-xs shadow-2xs space-y-1 transition ${hoverClass}" ${actionAttr}>
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-green-800"><i class="fa-solid fa-user-circle mr-1 text-green-600"></i>${c.userName || 'අනනාමික'}</span>
+                                <span class="text-gray-400">${cTime}</span>
+                            </div>
+                            <p class="text-gray-800 text-[11px] leading-relaxed break-words">${c.text}</p>
+                        </div>
+                    `;
+                });
+            }
+
+            return `
+                <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200 space-y-2 mt-2">
+                    <div class="text-[11px] font-bold text-gray-700 flex items-center justify-between border-b border-gray-200/60 pb-1">
+                        <span><i class="fa-solid fa-comments text-green-600 mr-1"></i> අදහස් දැක්වීම් (${comments.length})</span>
+                    </div>
+                    
+                    <!-- ස්ක්‍රෝල් කළ හැකි වෙනම කොටස -->
+                    <div class="max-h-32 overflow-y-auto custom-scroll space-y-1.5 pr-1">
+                        ${commentsListHtml}
+                    </div>
+
+                    <!-- අදහස් දැක්වීම් ඇතුළත් කිරීමේ ආදාන කොටස -->
+                    <div class="flex gap-1.5 pt-1">
+                        <input type="text" id="comment-input-${typeKey}-${report.id}" placeholder="අදහසක් ලියන්න..." class="flex-1 bg-white px-3 py-1.5 rounded-lg border border-gray-300 text-xs focus:ring-1 focus:ring-green-500 outline-none">
+                        <button onclick="event.stopPropagation(); postComment('${report.id}', ${isFullscreen})" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm active:scale-95">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
 
         function refreshDataUI() {
             document.getElementById('reportCountBadge').innerText = reportsData.length;
@@ -917,38 +990,10 @@
                         </div>` : '';
                     
                     const reporterName = item.userName || 'අනනාමික';
-
-                    // Comments section HTML generator
-                    let commentsHtml = '';
-                    if (item.comments && item.comments.length > 0) {
-                        item.comments.forEach(c => {
-                            const cTime = formatDateTime12H(c.timestamp);
-                            // තමන් විසින් දමන ලද අදහස් පමණක් සංස්කරණය කිරීමට හෝ මකා දැමීමට හැකියාව ලබා දීම (නම පදනම් කර හෝ uid පදනම් කර පරීක්ෂා කෙරේ)
-                            const isMyComment = (c.name === currentUserName);
-                            const commentActions = isMyComment ? `
-                                <div class="flex items-center gap-2 mt-1 text-[10px]">
-                                    <button onclick="event.stopPropagation(); startEditComment('${item.id}', '${c.id}', '${c.text.replace(/'/g, "\\'")}')" class="text-blue-600 hover:underline font-bold"><i class="fa-solid fa-pen mr-0.5"></i>සංස්කරණය</button>
-                                    <button onclick="event.stopPropagation(); deleteComment('${item.id}', '${c.id}')" class="text-red-600 hover:underline font-bold"><i class="fa-solid fa-trash mr-0.5"></i>මකන්න</button>
-                                </div>
-                            ` : '';
-
-                            commentsHtml += `
-                                <div id="comment-item-${c.id}" class="bg-white p-2 rounded-xl border border-gray-100 text-[11px] space-y-0.5 shadow-sm">
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-bold text-green-800"><i class="fa-solid fa-user-circle mr-1 text-green-600"></i>${c.name}</span>
-                                        <span class="text-[9px] text-gray-400">${cTime}</span>
-                                    </div>
-                                    <p class="text-gray-700 m-0 break-words leading-tight">${c.text}</p>
-                                    ${commentActions}
-                                </div>
-                            `;
-                        });
-                    } else {
-                        commentsHtml = `<p class="text-[10px] text-gray-400 text-center py-2">තවම අදහස් දැක්වීම් නොමැත.</p>`;
-                    }
+                    const commentsSectionHtml = generateCommentsHtml(item, false);
                     
                     const popupHtml = `
-                        <div id="popup-inner-box-${item.id}" class="p-3 space-y-2 max-h-[380px] overflow-y-auto custom-scroll">
+                        <div id="popup-inner-box-${item.id}" class="p-3.5 space-y-2">
                             <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100">
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}">
                                     <i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}
@@ -989,25 +1034,7 @@
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
 
-                            <!-- Comments Section Added Below (Scrollable) -->
-                            <div class="border-t border-gray-200 pt-2.5 mt-2 space-y-2">
-                                <span class="text-xs font-bold text-gray-800 flex items-center gap-1">
-                                    <i class="fa-solid fa-comments text-green-600"></i> අදහස් දැක්වීම් (${item.comments ? item.comments.length : 0})
-                                </span>
-                                
-                                <!-- Scrollable Comments Container with Fixed Height -->
-                                <div class="max-h-[120px] overflow-y-auto custom-scroll space-y-1.5 bg-gray-50/80 p-2 rounded-xl border border-gray-200">
-                                    ${commentsHtml}
-                                </div>
-
-                                <!-- Comment Input Form -->
-                                <form onsubmit="submitComment('${item.id}', event)" class="flex gap-1.5 pt-1">
-                                    <input type="text" id="comment-input-${item.id}" required placeholder="අදහසක් ලියන්න..." class="flex-1 px-2.5 py-1.5 text-xs bg-white border border-gray-300 rounded-xl outline-none focus:ring-1 focus:ring-green-500 text-gray-800">
-                                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition active:scale-95 flex items-center justify-center">
-                                        <i class="fa-solid fa-paper-plane"></i>
-                                    </button>
-                                </form>
-                            </div>
+                            ${commentsSectionHtml}
 
                             <div class="flex gap-2 pt-1">
                                 <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
@@ -1063,36 +1090,10 @@
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
                                 if (!isDragging && touchDuration < 300) {
-                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'INPUT' && !event.target.closest('input') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img') && event.target.tagName !== 'INPUT' && !event.target.closest('input')) {
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
+                                        const commentsFullHtml = generateCommentsHtml(item, true);
                                         
-                                        // Fullscreen view layout (අදහස් දැක්වීම් පහසුකම සමඟ)
-                                        let fullCommentsHtml = '';
-                                        if (item.comments && item.comments.length > 0) {
-                                            item.comments.forEach(c => {
-                                                const cTime = formatDateTime12H(c.timestamp);
-                                                const isMyComment = (c.name === currentUserName);
-                                                const commentActions = isMyComment ? `
-                                                    <div class="flex items-center gap-3 mt-1.5 text-xs">
-                                                        <button onclick="startEditComment('${item.id}', '${c.id}', '${c.text.replace(/'/g, "\\'")}')" class="text-blue-600 hover:underline font-bold"><i class="fa-solid fa-pen mr-1"></i>සංස්කරණය</button>
-                                                        <button onclick="deleteComment('${item.id}', '${c.id}')" class="text-red-600 hover:underline font-bold"><i class="fa-solid fa-trash mr-1"></i>මකන්න</button>
-                                                    </div>
-                                                ` : '';
-                                                fullCommentsHtml += `
-                                                    <div id="comment-item-${c.id}" class="bg-white p-3 rounded-xl border border-gray-100 text-sm space-y-1 shadow-sm">
-                                                        <div class="flex justify-between items-center">
-                                                            <span class="font-bold text-green-800"><i class="fa-solid fa-user-circle mr-1 text-green-600"></i>${c.name}</span>
-                                                            <span class="text-xs text-gray-400">${cTime}</span>
-                                                        </div>
-                                                        <p class="text-gray-700 m-0 break-words">${c.text}</p>
-                                                        ${commentActions}
-                                                    </div>
-                                                `;
-                                            });
-                                        } else {
-                                            fullCommentsHtml = `<p class="text-xs text-gray-400 text-center py-3">තවම අදහස් දැක්වීම් නොමැත.</p>`;
-                                        }
-
                                         fullModalBody.innerHTML = `
                                             <div class="space-y-4 pb-8">
                                                 <div class="flex items-center justify-between gap-1 pb-3 border-b border-gray-100">
@@ -1141,21 +1142,7 @@
                                                     <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                                                 </div>
 
-                                                <!-- Fullscreen Comments Section -->
-                                                <div class="border-t border-gray-200 pt-4 mt-4 space-y-3">
-                                                    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                                                        <i class="fa-solid fa-comments text-green-600"></i> අදහස් දැක්වීම් (${item.comments ? item.comments.length : 0})
-                                                    </h3>
-                                                    <div class="max-h-[200px] overflow-y-auto custom-scroll space-y-2 bg-gray-50 p-3 rounded-2xl border border-gray-200">
-                                                        ${fullCommentsHtml}
-                                                    </div>
-                                                    <form onsubmit="submitComment('${item.id}', event)" class="flex gap-2">
-                                                        <input type="text" id="comment-input-${item.id}" required placeholder="අදහසක් ලියන්න..." class="flex-1 px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-gray-800">
-                                                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition active:scale-95 flex items-center gap-1.5">
-                                                            <i class="fa-solid fa-paper-plane"></i> යවන්න
-                                                        </button>
-                                                    </form>
-                                                </div>
+                                                ${commentsFullHtml}
 
                                                 <div class="flex gap-3 pt-3">
                                                     <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-sm py-3.5 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm"><i class="fa-solid fa-pen mr-1.5"></i> වෙනස් කරන්න</button>
