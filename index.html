@@ -250,7 +250,7 @@
     <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0">
             
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
@@ -389,10 +389,10 @@
 
     <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
 
-    <!-- Firebase SDK v12 -->
+    <!-- Firebase SDK v10 -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCQiW0rOeuWwp3-h4ip37PcsUT-HoIhXg4",
@@ -579,13 +579,6 @@
                 container.classList.add('max-h-[calc(100dvh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
                 container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
                 icon.classList.replace('fa-compress', 'fa-expand');
-            }
-        };
-
-        window.handleModalClick = (e) => {
-            const container = document.getElementById('reportModalContainer');
-            if (container.classList.contains('max-h-[calc(100dvh-20px)]')) {
-                toggleModalFullscreen();
             }
         };
 
@@ -954,7 +947,7 @@
             const dt12H = formatDateTime12H(item.timestamp);
             const timeMeta = getTimeMeta(item.timestamp);
             const reporterName = item.userName || 'අනනාමික';
-            const safeJson = encodeURIComponent(JSON.stringify(item));
+            const safeJson = encodeURIComponent(JSON.stringify(item)).replace(/'/g, "%27");
             const commentsSectionHTML = buildCommentsSectionHTML(item, true);
 
             fullModalBody.innerHTML = `
@@ -1056,7 +1049,7 @@
                     const theme = getRiskTheme(item.risk);
                     const dt12H = formatDateTime12H(item.timestamp);
                     const timeMeta = getTimeMeta(item.timestamp);
-                    const safeJson = encodeURIComponent(JSON.stringify(item));
+                    const safeJson = encodeURIComponent(JSON.stringify(item)).replace(/'/g, "%27");
                     
                     const imgHtml = item.imgData ? `
                         <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
@@ -1159,14 +1152,12 @@
                                 
                                 if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
                                     isDragging = true;
-                                    map.dragging._draggable._onDown(event);
                                 }
                             }, { passive: true });
 
                             innerBox.addEventListener('touchend', function(event) {
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
-                                // Prevent triggering fullscreen modal when clicking inputs or buttons inside popup
                                 const targetTag = event.target.tagName;
                                 if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'BUTTON' || 
                                     event.target.closest('button') || event.target.closest('input') || event.target.closest('textarea')) {
