@@ -364,7 +364,7 @@
         </div>
     </div>
 
-    <!-- Fullscreen Image Lightbox Modal -->
+    <!-- Fullscreen Image Lightbox Modal (z-index එක වැඩි කර ඇත: z-[999999]) -->
     <div id="lightboxModal" class="hidden fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto" onclick="closeLightbox()">
         <button onclick="closeLightbox()" class="absolute top-5 right-5 text-white text-2xl z-10 w-11 h-11 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/80 transition active:scale-95">
             <i class="fa-solid fa-xmark"></i>
@@ -387,26 +387,6 @@
         </div>
     </div>
 
-    <!-- Comment Edit/Delete Confirmation Modal -->
-    <div id="commentActionModal" class="hidden fixed inset-0 z-[170] flex items-center justify-center pointer-events-auto backdrop-blur-sm bg-gray-900/70 px-4">
-        <div class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
-                <i class="fa-solid fa-comments"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 mb-2">අදහස් දැක්වීම කළමනාකරණය</h3>
-            <p class="text-xs text-gray-500 mb-6 font-medium">මෙම අදහසට ඔබ කිරීමට කැමති කුමක්ද?</p>
-            <div class="space-y-2.5">
-                <button id="commentEditBtn" class="w-full py-3 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-pen"></i> සංස්කරණය කරන්න
-                </button>
-                <button id="commentDeleteBtn" class="w-full py-3 rounded-xl bg-red-50 text-red-700 font-bold hover:bg-red-100 transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-trash"></i> මකා දමන්න
-                </button>
-                <button onclick="closeModal('commentActionModal')" class="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition text-sm">අවලංගුයි</button>
-            </div>
-        </div>
-    </div>
-
     <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
 
     <!-- Firebase SDK v12 -->
@@ -425,9 +405,6 @@
         };
 
         let app, db, currentUser = { uid: "web-user" };
-        let currentUserId = localStorage.getItem('elephantWatchUserId') || 'user_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('elephantWatchUserId', currentUserId);
-
         let currentUserName = localStorage.getItem('elephantWatchUserName') || '';
         let map, userMarker, tempMarker;
         let reportsData = [];
@@ -435,6 +412,7 @@
         let targetDeleteId = null;
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000;
+
         let currentSheetState = 'normal';
 
         function setBottomSheetState(state) {
@@ -479,7 +457,6 @@
 
         function initSwipeGestures() {
             const dragHandle = document.getElementById('dragHandle');
-            if(!dragHandle) return;
 
             dragHandle.addEventListener('touchstart', (e) => {
                 startY = e.touches[0].clientY;
@@ -824,147 +801,6 @@
             }
         }, 1000);
 
-        // Comments Handling Functions
-        window.postComment = async (reportId, isFullscreen = false) => {
-            if (!currentUserName) {
-                openNameChangeModal();
-                showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
-                return;
-            }
-
-            const inputId = isFullscreen ? `comment-input-full-${reportId}` : `comment-input-popup-${reportId}`;
-            const inputEl = document.getElementById(inputId);
-            if (!inputEl) return;
-
-            const commentText = inputEl.value.trim();
-            if (!commentText) return;
-
-            const report = reportsData.find(r => r.id === reportId);
-            if (!report) return;
-
-            let comments = report.comments || [];
-            const newComment = {
-                id: 'c_' + Math.random().toString(36).substr(2, 9),
-                userId: currentUserId,
-                userName: currentUserName,
-                text: commentText,
-                timestamp: Date.now()
-            };
-
-            // නව අදහස් දැක්වීම ලැයිස්තුවේ ඉහළින්ම එකතු කිරීම
-            comments.unshift(newComment);
-
-            try {
-                const reportRef = doc(db, 'reports', reportId);
-                await updateDoc(reportRef, { comments: comments });
-                inputEl.value = '';
-                showToast("අදහස් දැක්වීම සාර්ථකව එකතු කරන ලදී.");
-            } catch (err) {
-                console.error("Comment error:", err);
-                showToast("අදහස එකතු කිරීම අසාර්ථකයි.", "error");
-            }
-        };
-
-        window.openCommentActionModal = (reportId, commentId, currentText) => {
-            const actionModal = document.getElementById('commentActionModal');
-            actionModal.classList.remove('hidden');
-
-            document.getElementById('commentDeleteBtn').onclick = async () => {
-                actionModal.classList.add('hidden');
-                await deleteComment(reportId, commentId);
-            };
-
-            document.getElementById('commentEditBtn').onclick = async () => {
-                actionModal.classList.add('hidden');
-                const newText = prompt("අදහස් දැක්වීම සංස්කරණය කරන්න:", currentText);
-                if (newText !== null && newText.trim() !== "") {
-                    await editComment(reportId, commentId, newText.trim());
-                }
-            };
-        };
-
-        async function deleteComment(reportId, commentId) {
-            const report = reportsData.find(r => r.id === reportId);
-            if (!report || !report.comments) return;
-
-            const updatedComments = report.comments.filter(c => c.id !== commentId);
-            try {
-                const reportRef = doc(db, 'reports', reportId);
-                await updateDoc(reportRef, { comments: updatedComments });
-                showToast("අදහස් දැක්වීම මකා දමන ලදී.");
-            } catch (err) {
-                showToast("මකා දැමීම අසාර්ථකයි.", "error");
-            }
-        }
-
-        async function editComment(reportId, commentId, newText) {
-            const report = reportsData.find(r => r.id === reportId);
-            if (!report || !report.comments) return;
-
-            const updatedComments = report.comments.map(c => {
-                if (c.id === commentId) {
-                    return { ...c, text: newText, timestamp: Date.now() };
-                }
-                return c;
-            });
-
-            try {
-                const reportRef = doc(db, 'reports', reportId);
-                await updateDoc(reportRef, { comments: updatedComments });
-                showToast("අදහස් දැක්වීම යාවත්කාලීන කරන ලදී.");
-            } catch (err) {
-                showToast("යාවත්කාලීන කිරීම අසාර්ථකයි.", "error");
-            }
-        }
-
-        function generateCommentsHtml(report, isFullscreen = false) {
-            const comments = report.comments || [];
-            const typeKey = isFullscreen ? 'full' : 'popup';
-            
-            let commentsListHtml = '';
-            if (comments.length === 0) {
-                commentsListHtml = `<div class="text-[11px] text-gray-400 text-center py-2">තවම අදහස් දැක්වීම් නොමැත.</div>`;
-            } else {
-                comments.forEach(c => {
-                    const cTime = formatDateTime12H(c.timestamp);
-                    const isOwner = c.userId === currentUserId;
-                    const actionAttr = isOwner ? `onclick="openCommentActionModal('${report.id}', '${c.id}', '${c.text.replace(/'/g, "\\'")}')" title="සංස්කරණය/මකන්න"` : '';
-                    const hoverClass = isOwner ? 'cursor-pointer hover:bg-gray-100/80 border-dashed border-green-200' : '';
-
-                    commentsListHtml += `
-                        <div class="bg-white p-2 rounded-xl border border-gray-200/80 text-xs shadow-2xs space-y-1 transition ${hoverClass}" ${actionAttr}>
-                            <div class="flex justify-between items-center text-[10px]">
-                                <span class="font-bold text-green-800"><i class="fa-solid fa-user-circle mr-1 text-green-600"></i>${c.userName || 'අනනාමික'}</span>
-                                <span class="text-gray-400">${cTime}</span>
-                            </div>
-                            <p class="text-gray-800 text-[11px] leading-relaxed break-words">${c.text}</p>
-                        </div>
-                    `;
-                });
-            }
-
-            return `
-                <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200 space-y-2 mt-2">
-                    <div class="text-[11px] font-bold text-gray-700 flex items-center justify-between border-b border-gray-200/60 pb-1">
-                        <span><i class="fa-solid fa-comments text-green-600 mr-1"></i> අදහස් දැක්වීම් (${comments.length})</span>
-                    </div>
-                    
-                    <!-- ස්ක්‍රෝල් කළ හැකි වෙනම කොටස -->
-                    <div class="max-h-32 overflow-y-auto custom-scroll space-y-1.5 pr-1">
-                        ${commentsListHtml}
-                    </div>
-
-                    <!-- අදහස් දැක්වීම් ඇතුළත් කිරීමේ ආදාන කොටස -->
-                    <div class="flex gap-1.5 pt-1">
-                        <input type="text" id="comment-input-${typeKey}-${report.id}" placeholder="අදහසක් ලියන්න..." class="flex-1 bg-white px-3 py-1.5 rounded-lg border border-gray-300 text-xs focus:ring-1 focus:ring-green-500 outline-none">
-                        <button onclick="event.stopPropagation(); postComment('${report.id}', ${isFullscreen})" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm active:scale-95">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
         function refreshDataUI() {
             document.getElementById('reportCountBadge').innerText = reportsData.length;
             const activeIds = reportsData.map(r => r.id);
@@ -990,7 +826,6 @@
                         </div>` : '';
                     
                     const reporterName = item.userName || 'අනනාමික';
-                    const commentsSectionHtml = generateCommentsHtml(item, false);
                     
                     const popupHtml = `
                         <div id="popup-inner-box-${item.id}" class="p-3.5 space-y-2">
@@ -1033,8 +868,6 @@
                             <div id="note-popup-${item.id}" class="text-[10px] text-amber-900 bg-amber-100/80 p-2 rounded-xl border border-amber-200 text-center font-bold leading-tight">
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
-
-                            ${commentsSectionHtml}
 
                             <div class="flex gap-2 pt-1">
                                 <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
@@ -1090,9 +923,8 @@
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
                                 if (!isDragging && touchDuration < 300) {
-                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img') && event.target.tagName !== 'INPUT' && !event.target.closest('input')) {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
-                                        const commentsFullHtml = generateCommentsHtml(item, true);
                                         
                                         fullModalBody.innerHTML = `
                                             <div class="space-y-4 pb-8">
@@ -1141,8 +973,6 @@
                                                 <div class="text-xs text-amber-900 bg-amber-100/80 p-3.5 rounded-xl border border-amber-200 text-center font-bold leading-tight mt-2">
                                                     <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                                                 </div>
-
-                                                ${commentsFullHtml}
 
                                                 <div class="flex gap-3 pt-3">
                                                     <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-sm py-3.5 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm"><i class="fa-solid fa-pen mr-1.5"></i> වෙනස් කරන්න</button>
