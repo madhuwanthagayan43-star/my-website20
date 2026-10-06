@@ -364,7 +364,7 @@
         </div>
     </div>
 
-    <!-- Fullscreen Image Lightbox Modal (z-index එක වැඩි කර ඇත: z-[999999]) -->
+    <!-- Fullscreen Image Lightbox Modal -->
     <div id="lightboxModal" class="hidden fixed inset-0 z-[999999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto" onclick="closeLightbox()">
         <button onclick="closeLightbox()" class="absolute top-5 right-5 text-white text-2xl z-10 w-11 h-11 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/80 transition active:scale-95">
             <i class="fa-solid fa-xmark"></i>
@@ -412,7 +412,6 @@
         let targetDeleteId = null;
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000;
-
         let currentSheetState = 'normal';
 
         function setBottomSheetState(state) {
@@ -801,6 +800,129 @@
             }
         }, 1000);
 
+        // --- Comment Handling Functions ---
+        window.handleAddComment = async (reportId, isFullscreen = false) => {
+            if (!currentUserName) {
+                openNameChangeModal();
+                showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
+                return;
+            }
+            const inputId = isFullscreen ? `comment-input-full-${reportId}` : `comment-input-popup-${reportId}`;
+            const inputEl = document.getElementById(inputId);
+            const text = inputEl ? inputEl.value.trim() : '';
+            if(!text) return;
+
+            const report = reportsData.find(r => r.id === reportId);
+            if(!report) return;
+
+            let comments = report.comments || [];
+            
+            // නව කමෙන්ට් එක ලැයිස්තුවේ ඉහළින්ම (unshift මඟින්) එකතු කිරීම
+            comments.unshift({
+                id: 'cm_' + Date.now() + Math.random().toString(36.substring(2, 7)),
+                userName: currentUserName,
+                text: text,
+                timestamp: Date.now()
+            });
+
+            try {
+                const reportRef = doc(db, 'reports', reportId);
+                await updateDoc(reportRef, { comments: comments });
+                inputEl.value = '';
+                showToast("කමෙන්ට් එක සාර්ථකව එකතු කරන ලදී.");
+            } catch(err) {
+                console.error(err);
+                showToast("කමෙන්ට් එක යැවීමේ දෝෂයකි.", "error");
+            }
+        };
+
+        window.handleDeleteComment = async (reportId, commentId) => {
+            const report = reportsData.find(r => r.id === reportId);
+            if(!report || !report.comments) return;
+
+            const updatedComments = report.comments.filter(c => c.id !== commentId);
+            try {
+                const reportRef = doc(db, 'reports', reportId);
+                await updateDoc(reportRef, { comments: updatedComments });
+                showToast("කමෙන්ට් එක ඉවත් කරන ලදී.");
+            } catch(err) {
+                showToast("දෝෂයක් ඇතිවිය.", "error");
+            }
+        };
+
+        window.handleEditComment = async (reportId, commentId, oldText) => {
+            const newText = prompt("කමෙන්ට් එක වෙනස් කරන්න:", oldText);
+            if(newText === null || newText.trim() === "") return;
+
+            const report = reportsData.find(r => r.id === reportId);
+            if(!report || !report.comments) return;
+
+            const updatedComments = report.comments.map(c => {
+                if(c.id === commentId) {
+                    return { ...c, text: newText.trim(), timestamp: Date.now() };
+                }
+                return c;
+            });
+
+            try {
+                const reportRef = doc(db, 'reports', reportId);
+                await updateDoc(reportRef, { comments: updatedComments });
+                showToast("කමෙන්ට් එක යාවත්කාලීන කරන ලදී.");
+            } catch(err) {
+                showToast("දෝෂයක් ඇතිවිය.", "error");
+            }
+        };
+
+        function renderCommentsHTML(report, isFullscreen = false) {
+            const comments = report.comments || [];
+            let commentsListHtml = '';
+
+            if(comments.length === 0) {
+                commentsListHtml = `<p class="text-[11px] text-gray-400 text-center py-2">තවම කමෙන්ට්ස් නොමැත.</p>`;
+            } else {
+                comments.forEach(c => {
+                    const cTimeStr = formatDateTime12H(c.timestamp);
+                    const isOwner = currentUserName && (c.userName === currentUserName);
+                    
+                    commentsListHtml += `
+                        <div class="bg-white p-2 rounded-xl border border-gray-200/80 shadow-2xs space-y-1">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-green-800"><i class="fa-solid fa-user text-xs mr-1"></i>${c.userName}</span>
+                                <span class="text-gray-400">${cTimeStr}</span>
+                            </div>
+                            <p class="text-xs text-gray-700 leading-snug break-words">${c.text}</p>
+                            ${isOwner ? `
+                                <div class="flex justify-end gap-2 pt-1 border-t border-gray-100">
+                                    <button onclick="event.stopPropagation(); handleEditComment('${report.id}', '${c.id}', '${c.text.replace(/'/g, "\\'")}')" class="text-[10px] text-blue-600 font-bold hover:underline"><i class="fa-solid fa-pen mr-0.5"></i>වෙනස්</button>
+                                    <button onclick="event.stopPropagation(); handleDeleteComment('${report.id}', '${c.id}')" class="text-[10px] text-red-600 font-bold hover:underline"><i class="fa-solid fa-trash mr-0.5"></i>මකන්න</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            const inputId = isFullscreen ? `comment-input-full-${report.id}` : `comment-input-popup-${report.id}`;
+            const btnAction = isFullscreen ? `handleAddComment('${report.id}', true)` : `handleAddComment('${report.id}', false)`;
+
+            return `
+                <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <span class="text-xs font-bold text-gray-800 block"><i class="fa-solid fa-comments text-green-600 mr-1"></i> අදහස් සහ තොරතුරු (${comments.length})</span>
+                    
+                    <!-- ප්‍රමාණය සීමා කර ස්ක්‍රෝල් බාර් එකක් සහිත කමෙන්ට් ලැයිස්තුව -->
+                    <div class="max-h-36 overflow-y-auto custom-scroll space-y-2 p-1 bg-gray-50 rounded-xl border border-gray-200">
+                        ${commentsListHtml}
+                    </div>
+
+                    <!-- කමෙන්ට් ලිවීමේ කොටස -->
+                    <div class="flex gap-1.5 pt-1">
+                        <input type="text" id="${inputId}" placeholder="අදහසක් ලියන්න..." class="flex-1 text-xs px-3 py-2 rounded-xl border border-gray-300 focus:ring-1 focus:ring-green-500 outline-none bg-white">
+                        <button type="button" onclick="event.stopPropagation(); ${btnAction}" class="bg-green-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-green-700 active:scale-95 transition shadow-sm"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            `;
+        }
+
         function refreshDataUI() {
             document.getElementById('reportCountBadge').innerText = reportsData.length;
             const activeIds = reportsData.map(r => r.id);
@@ -826,6 +948,7 @@
                         </div>` : '';
                     
                     const reporterName = item.userName || 'අනනාමික';
+                    const commentsSectionHtml = renderCommentsHTML(item, false);
                     
                     const popupHtml = `
                         <div id="popup-inner-box-${item.id}" class="p-3.5 space-y-2">
@@ -868,6 +991,8 @@
                             <div id="note-popup-${item.id}" class="text-[10px] text-amber-900 bg-amber-100/80 p-2 rounded-xl border border-amber-200 text-center font-bold leading-tight">
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
+
+                            ${commentsSectionHtml}
 
                             <div class="flex gap-2 pt-1">
                                 <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
@@ -923,8 +1048,9 @@
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
                                 if (!isDragging && touchDuration < 300) {
-                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img') && event.target.tagName !== 'INPUT' && !event.target.closest('input')) {
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
+                                        const commentsSectionFullHtml = renderCommentsHTML(item, true);
                                         
                                         fullModalBody.innerHTML = `
                                             <div class="space-y-4 pb-8">
@@ -973,6 +1099,8 @@
                                                 <div class="text-xs text-amber-900 bg-amber-100/80 p-3.5 rounded-xl border border-amber-200 text-center font-bold leading-tight mt-2">
                                                     <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                                                 </div>
+
+                                                ${commentsSectionFullHtml}
 
                                                 <div class="flex gap-3 pt-3">
                                                     <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-sm py-3.5 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm"><i class="fa-solid fa-pen mr-1.5"></i> වෙනස් කරන්න</button>
