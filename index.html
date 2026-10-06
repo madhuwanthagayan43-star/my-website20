@@ -387,21 +387,6 @@
         </div>
     </div>
 
-    <!-- Comment Delete Modal -->
-    <div id="commentDeleteModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center pointer-events-auto backdrop-blur-sm bg-gray-900/70 px-4 transition-opacity">
-        <div class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border-4 border-white shadow-lg">
-                <i class="fa-solid fa-comment-slash"></i>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">අදහස් දැක්වීම මකන්නද?</h3>
-            <p class="text-sm text-gray-500 mb-6 font-medium">මෙම අදහස ඉවත් කෙරෙනු ඇත.</p>
-            <div class="flex gap-3">
-                <button onclick="closeModal('commentDeleteModal')" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition text-sm">නැහැ</button>
-                <button id="confirmCommentDeleteBtn" class="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-600/30 active:scale-95 transition text-sm">ඔව්, මකන්න</button>
-            </div>
-        </div>
-    </div>
-
     <div id="toastArea" class="fixed top-20 left-0 right-0 flex flex-col items-center gap-2 z-[200] pointer-events-none px-4"></div>
 
     <!-- Firebase SDK v12 -->
@@ -425,10 +410,9 @@
         let reportsData = [];
         let mapMarkers = {}; 
         let targetDeleteId = null;
-        let targetCommentDelete = { reportId: null, commentId: null };
-        let editingComment = { reportId: null, commentId: null };
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000;
+
         let currentSheetState = 'normal';
 
         function setBottomSheetState(state) {
@@ -473,7 +457,6 @@
 
         function initSwipeGestures() {
             const dragHandle = document.getElementById('dragHandle');
-            if(!dragHandle) return;
 
             dragHandle.addEventListener('touchstart', (e) => {
                 startY = e.touches[0].clientY;
@@ -818,137 +801,6 @@
             }
         }, 1000);
 
-        // Comments Management Logic
-        window.handleCommentSubmit = async (event, reportId, isFullscreen = false) => {
-            event.preventDefault();
-            if (!currentUserName) {
-                openNameChangeModal();
-                showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
-                return;
-            }
-
-            const inputId = isFullscreen ? `comment-input-full-${reportId}` : `comment-input-popup-${reportId}`;
-            const inputEl = document.getElementById(inputId);
-            if (!inputEl) return;
-            const text = inputEl.value.trim();
-            if (!text) return;
-
-            const report = reportsData.find(r => r.id === reportId);
-            if (!report) return;
-
-            let comments = report.comments ? [...report.comments] : [];
-
-            if (editingComment.reportId === reportId && editingComment.commentId) {
-                // Edit existing comment
-                comments = comments.map(c => {
-                    if (c.id === editingComment.commentId) {
-                        return { ...c, text, editedAt: Date.now() };
-                    }
-                    return c;
-                });
-                editingComment = { reportId: null, commentId: null };
-                showToast("අදහස යාවත්කාලීන කරන ලදී.");
-            } else {
-                // Fixed Code: Math.random().toString(36).substring(2, 7)
-                const newComment = {
-                    id: 'c_' + Date.now() + Math.random().toString(36).substring(2, 7),
-                    userName: currentUserName,
-                    text: text,
-                    timestamp: Date.now()
-                };
-                comments.unshift(newComment);
-                showToast("අදහස සාර්ථකව එකතු කරන ලදී.");
-            }
-
-            try {
-                const docRef = doc(db, 'reports', reportId);
-                await updateDoc(docRef, { comments });
-                inputEl.value = '';
-                
-                const btnId = isFullscreen ? `comment-btn-full-${reportId}` : `comment-btn-popup-${reportId}`;
-                const btnEl = document.getElementById(btnId);
-                if(btnEl) btnEl.innerHTML = `<i class="fa-solid fa-paper-plane"></i>`;
-            } catch (err) {
-                console.error("Comment error:", err);
-                showToast("අදහස සුරැකීමේ දෝෂයක් ඇතිවිය.", "error");
-            }
-        };
-
-        window.prepareEditComment = (reportId, commentId, currentText, isFullscreen = false) => {
-            editingComment = { reportId, commentId };
-            const inputId = isFullscreen ? `comment-input-full-${reportId}` : `comment-input-popup-${reportId}`;
-            const btnId = isFullscreen ? `comment-btn-full-${reportId}` : `comment-btn-popup-${reportId}`;
-            
-            const inputEl = document.getElementById(inputId);
-            const btnEl = document.getElementById(btnId);
-            if (inputEl) {
-                inputEl.value = currentText;
-                inputEl.focus();
-            }
-            if (btnEl) {
-                btnEl.innerHTML = `<i class="fa-solid fa-check"></i>`;
-            }
-        };
-
-        window.promptDeleteComment = (reportId, commentId) => {
-            targetCommentDelete = { reportId, commentId };
-            document.getElementById('commentDeleteModal').classList.remove('hidden');
-        };
-
-        document.getElementById('confirmCommentDeleteBtn').addEventListener('click', async () => {
-            const { reportId, commentId } = targetCommentDelete;
-            if (!reportId || !commentId || !db) return;
-
-            const report = reportsData.find(r => r.id === reportId);
-            if (!report || !report.comments) return;
-
-            const updatedComments = report.comments.filter(c => c.id !== commentId);
-
-            try {
-                const docRef = doc(db, 'reports', reportId);
-                await updateDoc(docRef, { comments: updatedComments });
-                showToast("අදහස මකා දමන ලදී.");
-                closeModal('commentDeleteModal');
-            } catch (err) {
-                showToast("මකා දැමීම අසාර්ථකයි.", "error");
-            }
-        });
-
-        function renderCommentsList(comments, reportId, isFullscreen = false) {
-            if (!comments || comments.length === 0) {
-                return `<div class="text-center py-3 text-gray-400 text-xs italic"><i class="fa-regular fa-comment-dots mr-1"></i> තවම අදහස් දක්වා නැත. පළමුවැන්නා වන්න!</div>`;
-            }
-
-            let html = '';
-            comments.forEach(c => {
-                const isOwner = c.userName === currentUserName;
-                const commentTime = formatDateTime12H(c.timestamp);
-                // Fixed Code: escaping newlines
-                const safeText = c.text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, "\\n");
-
-                html += `
-                <div class="bg-white p-2.5 rounded-xl border border-gray-200/80 shadow-2xs space-y-1">
-                    <div class="flex items-center justify-between text-[11px]">
-                        <span class="font-bold text-gray-800 flex items-center gap-1">
-                            <i class="fa-solid fa-circle-user text-green-600"></i> ${c.userName}
-                        </span>
-                        <span class="text-[10px] text-gray-400">${commentTime}</span>
-                    </div>
-                    <p class="text-xs text-gray-700 leading-relaxed break-words m-0 pl-4">${c.text}</p>
-                    ${isOwner ? `
-                    <div class="flex justify-end gap-2 pt-1 border-t border-gray-100">
-                        <button onclick="event.stopPropagation(); prepareEditComment('${reportId}', '${c.id}', '${safeText}', ${isFullscreen})" class="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-0.5">
-                            <i class="fa-solid fa-pen text-[9px]"></i> වෙනස්
-                        </button>
-                        <button onclick="event.stopPropagation(); promptDeleteComment('${reportId}', '${c.id}')" class="text-[10px] text-red-600 font-bold hover:underline flex items-center gap-0.5">
-                            <i class="fa-solid fa-trash text-[9px]"></i> මකන්න
-                        </button>
-                    </div>` : ''}
-                </div>`;
-            });
-            return html;
-        }
-
         function refreshDataUI() {
             document.getElementById('reportCountBadge').innerText = reportsData.length;
             const activeIds = reportsData.map(r => r.id);
@@ -964,7 +816,6 @@
                     const dt12H = formatDateTime12H(item.timestamp);
                     const timeMeta = getTimeMeta(item.timestamp);
                     const safeJson = encodeURIComponent(JSON.stringify(item));
-                    const commentsHtml = renderCommentsList(item.comments, item.id, false);
                     
                     const imgHtml = item.imgData ? `
                         <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
@@ -977,7 +828,7 @@
                     const reporterName = item.userName || 'අනනාමික';
                     
                     const popupHtml = `
-                        <div id="popup-inner-box-${item.id}" class="p-3.5 space-y-2.5 max-h-[380px] overflow-y-auto custom-scroll">
+                        <div id="popup-inner-box-${item.id}" class="p-3.5 space-y-2">
                             <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100">
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}">
                                     <i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}
@@ -1018,19 +869,7 @@
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
 
-                            <!-- Comments Section in Popup -->
-                            <div class="border-t border-gray-200 pt-2 space-y-2">
-                                <span class="text-xs font-bold text-gray-700 block"><i class="fa-solid fa-comments text-green-600 mr-1"></i> අදහස් දැක්වීම් (${item.comments ? item.comments.length : 0})</span>
-                                <div class="max-h-32 overflow-y-auto custom-scroll space-y-1.5 bg-gray-50 p-2 rounded-xl border border-gray-200">
-                                    ${commentsHtml}
-                                </div>
-                                <form onsubmit="handleCommentSubmit(event, '${item.id}', false)" class="flex gap-1.5 pt-1">
-                                    <input type="text" id="comment-input-popup-${item.id}" placeholder="අදහසක් ලියන්න..." required class="flex-1 px-3 py-1.5 text-xs rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-white font-medium">
-                                    <button type="submit" id="comment-btn-popup-${item.id}" class="bg-green-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-green-700 transition active:scale-95 shadow-xs flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
-                                </form>
-                            </div>
-
-                            <div class="flex gap-2 pt-1 border-t border-gray-100">
+                            <div class="flex gap-2 pt-1">
                                 <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
                                 <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
                             </div>
@@ -1076,6 +915,7 @@
                                 
                                 if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
                                     isDragging = true;
+                                    map.dragging._draggable._onDown(event);
                                 }
                             }, { passive: true });
 
@@ -1083,9 +923,8 @@
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
                                 if (!isDragging && touchDuration < 300) {
-                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img') && event.target.tagName !== 'INPUT' && !event.target.closest('input')) {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
-                                        const fullCommentsHtml = renderCommentsList(item.comments, item.id, true);
                                         
                                         fullModalBody.innerHTML = `
                                             <div class="space-y-4 pb-8">
@@ -1133,18 +972,6 @@
 
                                                 <div class="text-xs text-amber-900 bg-amber-100/80 p-3.5 rounded-xl border border-amber-200 text-center font-bold leading-tight mt-2">
                                                     <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
-                                                </div>
-
-                                                <!-- Comments Section in Fullscreen -->
-                                                <div class="border-t border-gray-200 pt-3 space-y-2.5">
-                                                    <span class="text-sm font-bold text-gray-800 block"><i class="fa-solid fa-comments text-green-600 mr-1.5"></i> අදහස් දැක්වීම් (${item.comments ? item.comments.length : 0})</span>
-                                                    <div class="max-h-48 overflow-y-auto custom-scroll space-y-2 bg-gray-50 p-3 rounded-2xl border border-gray-200">
-                                                        ${fullCommentsHtml}
-                                                    </div>
-                                                    <form onsubmit="handleCommentSubmit(event, '${item.id}', true)" class="flex gap-2 pt-1">
-                                                        <input type="text" id="comment-input-full-${item.id}" placeholder="අදහසක් ලියන්න..." required class="flex-1 px-4 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none bg-white font-medium shadow-2xs">
-                                                        <button type="submit" id="comment-btn-full-${item.id}" class="bg-green-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-green-700 transition active:scale-95 shadow-sm flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
-                                                    </form>
                                                 </div>
 
                                                 <div class="flex gap-3 pt-3">
@@ -1216,7 +1043,8 @@
             document.getElementById('mainHeader').classList.add('header-hidden');
 
             const form = document.getElementById('elephantForm');
-            form.reset(); removeImage();
+            form.reset(); 
+            removeImage();
             const dtStr = formatDateTime12H(Date.now());
             document.getElementById('modalDateTime').innerText = dtStr;
 
@@ -1229,18 +1057,27 @@
             if (dataStr) {
                 const data = JSON.parse(decodeURIComponent(dataStr));
                 document.getElementById('modalTitle').innerText = "වාර්තාව වෙනස් කරන්න";
-                document.getElementById('submitLabel').innerText = "යාවත්කාලීන කරන්න";
+                document.getElementById('submitLabel').innerText = "වෙනස් කරන්න";
                 document.getElementById('formId').value = data.id;
                 document.getElementById('formLat').value = data.lat;
                 document.getElementById('formLng').value = data.lng;
-                document.getElementById('formLocation').value = data.location;
-                document.getElementById('formCount').value = data.count;
+                document.getElementById('formLocation').value = data.location || '';
+                document.getElementById('formCount').value = data.count || 1;
                 document.getElementById('formDirection').value = data.direction || '';
-                
-                const riskInput = document.querySelector(`input[name="riskLvl"][value="${data.risk}"]`);
-                if (riskInput) riskInput.checked = true;
 
-                if (data.imgData) showImagePreview(data.imgData);
+                if (data.imgData) {
+                    document.getElementById('formImageBase64').value = data.imgData;
+                    document.getElementById('imagePreview').src = data.imgData;
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                    document.getElementById('imageOverlay').classList.remove('hidden');
+                    document.getElementById('uploadPrompt').classList.add('hidden');
+                    document.getElementById('btnRemoveImg').classList.remove('hidden');
+                }
+
+                const riskRadios = document.getElementsByName('riskLvl');
+                for (let r of riskRadios) {
+                    r.checked = (r.value === data.risk);
+                }
             } else {
                 document.getElementById('modalTitle').innerText = "නව වාර්තාවක්";
                 document.getElementById('submitLabel').innerText = "වාර්තා කරන්න";
@@ -1248,125 +1085,162 @@
                 document.getElementById('formLat').value = lat;
                 document.getElementById('formLng').value = lng;
             }
+
             document.getElementById('reportModal').classList.remove('hidden');
         };
 
         window.closeModal = (id) => {
             document.getElementById(id).classList.add('hidden');
             if (id === 'reportModal') {
+                if (tempMarker) {
+                    map.removeLayer(tempMarker);
+                    tempMarker = null;
+                }
                 document.getElementById('mainHeader').classList.remove('header-hidden');
-                if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
             }
         };
 
-        window.triggerEdit = (json) => { closeFullscreenModal(); map.closePopup(); openReportModal(json); };
-        window.triggerDelete = (id) => { closeFullscreenModal(); map.closePopup(); targetDeleteId = id; document.getElementById('deleteModal').classList.remove('hidden'); };
+        window.triggerEdit = (dataStr) => {
+            closeFullscreenModal();
+            openReportModal(dataStr);
+        };
 
-        window.processImage = (e) => {
-            const file = e.target.files[0];
+        window.triggerDelete = (id) => {
+            targetDeleteId = id;
+            closeFullscreenModal();
+            document.getElementById('deleteModal').classList.remove('hidden');
+        };
+
+        document.getElementById('confirmDeleteBtn').onclick = async () => {
+            if (!targetDeleteId) return;
+            try {
+                await deleteDoc(doc(db, 'reports', targetDeleteId));
+                showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
+                closeModal('deleteModal');
+                targetDeleteId = null;
+            } catch (err) {
+                console.error("Delete error:", err);
+                showToast("මකා දැමීමට නොහැකි විය.", "error");
+            }
+        };
+
+        window.processImage = (event) => {
+            const file = event.target.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) return showToast("ඡායාරූපයක් පමණක් තෝරන්න", "error");
 
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 500;
-                    let { width, height } = img;
-                    if (width > MAX_WIDTH) { height = Math.floor(height * (MAX_WIDTH / width)); width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height;
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDim = 800;
+
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    showImagePreview(canvas.toDataURL('image/jpeg', 0.6));
+
+                    const base64 = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('formImageBase64').value = base64;
+                    document.getElementById('imagePreview').src = base64;
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                    document.getElementById('imageOverlay').classList.remove('hidden');
+                    document.getElementById('uploadPrompt').classList.add('hidden');
+                    document.getElementById('btnRemoveImg').classList.remove('hidden');
                 };
-                img.src = event.target.result;
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         };
 
-        window.showImagePreview = (b64) => {
-            document.getElementById('formImageBase64').value = b64;
-            const imgEl = document.getElementById('imagePreview');
-            imgEl.src = b64; imgEl.classList.remove('hidden');
-            document.getElementById('uploadPrompt').classList.add('hidden');
-            document.getElementById('imageOverlay').classList.remove('hidden');
-            document.getElementById('btnRemoveImg').classList.remove('hidden');
-        };
-
         window.removeImage = () => {
-            document.getElementById('cameraInput').value = '';
-            document.getElementById('galleryInput').value = '';
             document.getElementById('formImageBase64').value = '';
             document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreview').classList.add('hidden');
             document.getElementById('imageOverlay').classList.add('hidden');
             document.getElementById('uploadPrompt').classList.remove('hidden');
             document.getElementById('btnRemoveImg').classList.add('hidden');
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('galleryInput').value = '';
         };
 
         document.getElementById('elephantForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!db) return;
 
-            const btn = document.getElementById('btnSubmit');
-            const origLabel = document.getElementById('submitLabel').innerText;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සැකසෙමින්...`;
-            btn.disabled = true;
+            const id = document.getElementById('formId').value;
+            const lat = parseFloat(document.getElementById('formLat').value);
+            const lng = parseFloat(document.getElementById('formLng').value);
+            const location = document.getElementById('formLocation').value.trim();
+            const count = parseInt(document.getElementById('formCount').value) || 1;
+            const direction = document.getElementById('formDirection').value.trim();
+            const imgData = document.getElementById('formImageBase64').value;
+            
+            const riskRadios = document.getElementsByName('riskLvl');
+            let risk = 'high';
+            for (let r of riskRadios) {
+                if (r.checked) {
+                    risk = r.value;
+                    break;
+                }
+            }
+
+            const payload = {
+                lat,
+                lng,
+                location,
+                count,
+                direction,
+                risk,
+                imgData,
+                userName: currentUserName,
+                timestamp: Date.now()
+            };
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-50');
 
             try {
-                const id = document.getElementById('formId').value;
-                const existingReport = reportsData.find(r => r.id === id);
-
-                const payload = {
-                    location: document.getElementById('formLocation').value.trim(),
-                    count: parseInt(document.getElementById('formCount').value) || 1,
-                    direction: document.getElementById('formDirection').value.trim(),
-                    risk: document.querySelector('input[name="riskLvl"]:checked').value,
-                    lat: parseFloat(document.getElementById('formLat').value),
-                    lng: parseFloat(document.getElementById('formLng').value),
-                    imgData: document.getElementById('formImageBase64').value,
-                    userId: currentUser.uid,
-                    userName: currentUserName || 'අනනාමික',
-                    timestamp: Date.now(),
-                    comments: existingReport && existingReport.comments ? existingReport.comments : []
-                };
-
-                const collRef = collection(db, 'reports');
-
                 if (id) {
-                    await updateDoc(doc(collRef, id), payload);
-                    showToast("වාර්තාව සාර්ථකව වෙනස් කරන ලදී.");
+                    await updateDoc(doc(db, 'reports', id), payload);
+                    showToast("වාර්තාව සාර්ථකව යාවත්කාලීන කරන ලදී!");
                 } else {
-                    await addDoc(collRef, payload);
-                    showToast("අනතුරු ඇඟවීම සාර්ථකව පද්ධතියට එක් කළා.");
+                    await addDoc(collection(db, 'reports'), payload);
+                    showToast("නව වාර්තාව සාර්ථකව ඇතුළත් කරන ලදී!");
                 }
+
+                if (tempMarker) {
+                    map.removeLayer(tempMarker);
+                    tempMarker = null;
+                }
+
                 closeModal('reportModal');
             } catch (err) {
-                console.error("Save failed:", err);
-                showToast("සුරැකීමේදී දෝෂයක් ඇතිවිය.", "error");
+                console.error("Save error:", err);
+                showToast("දත්ත සුරැකීමට නොහැකි විය.", "error");
             } finally {
-                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">${origLabel}</span>`;
-                btn.disabled = false;
-            }
-        });
-
-        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
-            if (!targetDeleteId || !db) return;
-            try {
-                await deleteDoc(doc(db, 'reports', targetDeleteId));
-                showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
-                closeModal('deleteModal');
-            } catch (err) {
-                showToast("මකා දැමීම අසාර්ථකයි.", "error");
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('opacity-50');
             }
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            checkUserLogin();
             initializeMap();
             connectFirebase();
             initSwipeGestures();
+            checkUserLogin();
         });
     </script>
 </body>
