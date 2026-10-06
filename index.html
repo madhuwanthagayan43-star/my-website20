@@ -38,7 +38,6 @@
         .leaflet-popup-pane { z-index: 1000 !important; }
         .leaflet-control-container { z-index: 60 !important; }
         
-        /* සාමාන්‍ය Leaflet Popup ස්ටෑන්ඩර්ඩ් සහ Touch පාලනය */
         .leaflet-popup {
             pointer-events: none !important;
         }
@@ -428,7 +427,7 @@
                 sheet.classList.add('sheet-fullscreen');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.add('header-hidden');
-                if (map) map.closePopup(); // Map Popup එක වසයි
+                if (map) map.closePopup();
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
                 if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
@@ -437,7 +436,7 @@
                 sheet.classList.add('sheet-normal');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.remove('header-hidden');
-                if (map) map.closePopup(); // Map Popup එක වසයි
+                if (map) map.closePopup();
             }
         }
 
@@ -924,11 +923,9 @@
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
                                 if (!isDragging && touchDuration < 300) {
-                                    // Image එකක් මත Click නොකළේ නම් පමණක් Fullscreen යන්න
                                     if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG') {
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
                                         
-                                        // Pop-up ආකෘතියටම Fullscreen ඩිසයින් එක
                                         fullModalBody.innerHTML = `
                                             <div class="space-y-4 pb-8">
                                                 <div class="flex items-center justify-between gap-1 pb-3 border-b border-gray-100">
