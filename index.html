@@ -183,6 +183,7 @@
     </div>
 
     <div class="ui-layer bottom-0 left-0 right-0 flex flex-col pointer-events-none pb-safe">
+        
         <!-- Floating Action Button -->
         <div class="flex justify-end px-5 mb-5 pointer-events-none">
             <button id="btnReportCurrent" class="pointer-events-auto bg-gradient-to-r from-red-500 to-red-600 text-white w-16 h-16 rounded-full shadow-[0_10px_25px_rgba(220,38,38,0.6)] flex items-center justify-center text-2xl hover:scale-105 active:scale-95 transition-transform border-[3px] border-white" title="මගේ ස්ථානයෙන් වාර්තා කරන්න">
@@ -409,6 +410,7 @@
         let reportsData = [];
         let mapMarkers = {}; 
         let targetDeleteId = null;
+        let activeFullscreenReportId = null;
 
         const EXPIRE_TIME_MS = 30 * 60 * 1000;
         let currentSheetState = 'normal';
@@ -455,7 +457,6 @@
 
         function initSwipeGestures() {
             const dragHandle = document.getElementById('dragHandle');
-            if (!dragHandle) return;
 
             dragHandle.addEventListener('touchstart', (e) => {
                 startY = e.touches[0].clientY;
@@ -668,9 +669,6 @@
 
             map.on('popupopen', () => {
                 setBottomSheetState('hidden');
-                if (map && map.dragging) {
-                    map.dragging.enable();
-                }
             });
 
             if ("geolocation" in navigator) {
@@ -845,7 +843,7 @@
             }
 
             return `
-                <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 mt-2 space-y-2" onclick="event.stopPropagation()" ontouchstart="if(map && map.dragging) map.dragging.enable();">
+                <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 mt-2 space-y-2" onclick="event.stopPropagation()">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-gray-700 flex items-center gap-1">
                             <i class="fa-solid fa-comments text-green-600"></i> අදහස් දැක්වීම්
@@ -859,8 +857,7 @@
                         <input type="text" id="${inputId}" placeholder="අදහසක් එක් කරන්න..." 
                             class="flex-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:border-green-500 bg-white font-medium"
                             onkeydown="if(event.key==='Enter'){ event.stopPropagation(); addComment('${item.id}', '${inputId}'); }"
-                            onclick="event.stopPropagation();"
-                            onblur="if(map && map.dragging) map.dragging.enable();">
+                            onclick="event.stopPropagation();">
                         <button onclick="event.stopPropagation(); addComment('${item.id}', '${inputId}')" 
                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition active:scale-95 shrink-0 flex items-center gap-1">
                             <i class="fa-solid fa-paper-plane text-[10px]"></i>
@@ -897,16 +894,9 @@
 
             const updatedComments = [...(report.comments || []), newComment];
 
-            // Blur input to dismiss soft keyboard & re-enable map drag
-            inputEl.blur();
-            if (map && map.dragging) {
-                map.dragging.enable();
-            }
-
             try {
                 await updateDoc(doc(db, 'reports', reportId), { comments: updatedComments });
                 inputEl.value = '';
-                if (map && map.dragging) map.dragging.enable();
                 showToast("අදහස සාර්ථකව එක් කෙරිණි!");
             } catch (err) {
                 console.error("Comment add error:", err);
@@ -932,346 +922,461 @@
 
             try {
                 await updateDoc(doc(db, 'reports', reportId), { comments: updatedComments });
-                if (document.activeElement) document.activeElement.blur();
-                if (map && map.dragging) map.dragging.enable();
-                showToast("අදහස සංශෝධනය කරන ලදී!");
+                showToast("අදහස වෙනස් කරන ලදී.");
             } catch (err) {
                 console.error("Comment edit error:", err);
-                showToast("අදහස සංශෝධනය කිරීම අසාර්ථකයි.", "error");
+                showToast("වෙනස් කිරීම අසාර්ථකයි.", "error");
             }
         };
 
         window.deleteComment = async (reportId, commentId) => {
+            if (!confirm("මෙම අදහස මකා දැමීමට ඔබට විශ්වාසද?")) return;
+
             const report = reportsData.find(r => r.id === reportId);
             if (!report) return;
-
-            if (!confirm("මෙම අදහස ඉවත් කිරීමට ඔබට විශ්වාසද?")) return;
 
             const updatedComments = (report.comments || []).filter(c => c.id !== commentId);
 
             try {
                 await updateDoc(doc(db, 'reports', reportId), { comments: updatedComments });
-                if (document.activeElement) document.activeElement.blur();
-                if (map && map.dragging) map.dragging.enable();
-                showToast("අදහස ඉවත් කරන ලදී!");
+                showToast("අදහස මකා දමන ලදී.");
             } catch (err) {
                 console.error("Comment delete error:", err);
-                showToast("අදහස ඉවත් කිරීම අසාර්ථකයි.", "error");
+                showToast("මකා දැමීම අසාර්ථකයි.", "error");
             }
+        };
+
+        function renderFullscreenModalContent(item) {
+            const fullModalBody = document.getElementById('fullscreen-modal-body');
+            if (!fullModalBody) return;
+
+            const theme = getRiskTheme(item.risk);
+            const dt12H = formatDateTime12H(item.timestamp);
+            const timeMeta = getTimeMeta(item.timestamp);
+            const reporterName = item.userName || 'අනනාමික';
+            const safeJson = encodeURIComponent(JSON.stringify(item));
+            const commentsSectionHTML = buildCommentsSectionHTML(item, true);
+
+            fullModalBody.innerHTML = `
+                <div class="space-y-4 pb-8">
+                    <div class="flex items-center justify-between gap-1 pb-3 border-b border-gray-100">
+                        <span class="text-sm font-bold px-3 py-1.5 rounded-lg border ${theme.class}">
+                            <i class="fa-solid ${theme.icon} mr-1.5"></i>${theme.label}
+                        </span>
+                        <span class="text-sm font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-stopwatch animate-pulse"></i>
+                            <span id="cd-full-${item.id}">${timeMeta.countdownFormatted}</span>
+                        </span>
+                    </div>
+
+                    <div class="bg-gray-50/90 p-4 rounded-xl border border-gray-200 space-y-2.5 shadow-inner">
+                        <div class="text-sm text-gray-800 flex items-center justify-between">
+                            <span class="text-gray-500 font-medium"><i class="fa-solid fa-user-check text-green-600 mr-1.5"></i> වාර්තාකරු:</span>
+                            <b class="text-green-800 text-base font-bold">${reporterName}</b>
+                        </div>
+                        <div class="text-sm text-gray-700 flex flex-col gap-1.5 pt-2 border-t border-gray-200/60">
+                            <span class="text-gray-500 font-medium"><i class="fa-regular fa-clock text-blue-600 mr-1.5"></i> දිනය/වේලාව:</span>
+                            <b class="text-gray-900 font-bold bg-white px-3 py-2 rounded-lg border border-gray-200 text-sm leading-snug shadow-sm">${dt12H}</b>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50/80 rounded-xl p-4 border border-amber-200 space-y-2.5">
+                        <div>
+                            <span class="text-xs text-amber-900 font-bold uppercase tracking-wider block mb-1.5"><i class="fa-solid fa-map-pin mr-1.5"></i> ස්ථානයේ විස්තරය</span>
+                            <p class="text-base font-bold text-gray-900 m-0 leading-tight">${item.location}</p>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-800 pt-2.5 border-t border-amber-200/60 font-medium">
+                            <span><i class="fa-solid fa-elephant text-amber-700 w-5"></i> අලි ගණන:</span> <b class="text-lg font-bold text-amber-900 bg-white px-3 py-0.5 rounded-lg border border-amber-200">${item.count}</b>
+                        </div>
+                        ${item.direction ? `<div class="flex justify-between items-center text-sm text-gray-800 pt-2.5 border-t border-amber-200/60 font-medium">
+                            <span><i class="fa-solid fa-compass text-amber-700 w-5"></i> දිශාව:</span> <b class="text-base">${item.direction}</b>
+                        </div>` : ''}
+                    </div>
+
+                    ${item.imgData ? `
+                    <div class="mt-3 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                        <img src="${item.imgData}" class="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-200" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                        <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-bold pointer-events-none">
+                            <i class="fa-solid fa-expand mr-2"></i> ලොකුවට බලන්න
+                        </div>
+                    </div>` : ''}
+
+                    ${commentsSectionHTML}
+
+                    <div class="text-xs text-amber-900 bg-amber-100/80 p-3.5 rounded-xl border border-amber-200 text-center font-bold leading-tight mt-2">
+                        <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
+                    </div>
+
+                    <div class="flex gap-3 pt-3">
+                        <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-sm py-3.5 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm"><i class="fa-solid fa-pen mr-1.5"></i> වෙනස් කරන්න</button>
+                        <button onclick="triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-sm py-3.5 rounded-xl font-bold hover:bg-red-700 transition border border-red-200 active:scale-95 shadow-sm"><i class="fa-solid fa-trash mr-1.5"></i> මකන්න</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openFullscreenModal = (reportId) => {
+            activeFullscreenReportId = reportId;
+            const item = reportsData.find(r => r.id === reportId);
+            if (!item) return;
+            renderFullscreenModalContent(item);
+            document.getElementById('fullscreen-modal').classList.add('flex');
+            document.getElementById('fullscreen-modal').classList.remove('hidden');
+            if (map) map.closePopup();
+        };
+
+        window.closeFullscreenModal = () => {
+            activeFullscreenReportId = null;
+            const modal = document.getElementById('fullscreen-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
         };
 
         function refreshDataUI() {
-            const badge = document.getElementById('reportCountBadge');
-            if (badge) badge.innerText = reportsData.length;
-
-            // Clear old markers not in reportsData
+            document.getElementById('reportCountBadge').innerText = reportsData.length;
+            const activeIds = reportsData.map(r => r.id);
             Object.keys(mapMarkers).forEach(id => {
-                if (!reportsData.find(r => r.id === id)) {
-                    map.removeLayer(mapMarkers[id]);
-                    delete mapMarkers[id];
-                }
+                if (!activeIds.includes(id)) { map.removeLayer(mapMarkers[id]); delete mapMarkers[id]; }
             });
 
-            if (reportsData.length === 0) {
-                renderEmptyState();
-                return;
+            // Update open Fullscreen Modal if active
+            if (activeFullscreenReportId) {
+                const activeReport = reportsData.find(r => r.id === activeFullscreenReportId);
+                if (activeReport) {
+                    renderFullscreenModalContent(activeReport);
+                } else {
+                    closeFullscreenModal();
+                }
             }
 
-            let listHTML = '';
-
-            reportsData.forEach(item => {
-                const riskInfo = getRiskTheme(item.risk);
-                const timeMeta = getTimeMeta(item.timestamp);
-                const timeStr = formatDateTime12H(item.timestamp);
-                const isOwner = (item.userName === currentUserName) || (item.userId === currentUser.uid);
-
-                // Update Map Markers
-                const markerIcon = L.divIcon({
-                    className: '',
-                    html: `<div style="background:${riskInfo.color}; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.4); border:3px solid white;"><i class="fa-solid fa-elephant text-lg"></i></div>`,
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                });
-
-                const popupContent = `
-                    <div class="p-3 text-gray-800 space-y-2 select-text" onclick="event.stopPropagation()" ontouchstart="if(map && map.dragging) map.dragging.enable();">
-                        <div class="flex items-center justify-between border-b border-gray-100 pb-2">
-                            <span class="text-xs font-bold px-2.5 py-1 rounded-full ${riskInfo.class}">
-                                <i class="fa-solid ${riskInfo.icon} mr-1"></i>${riskInfo.label}
-                            </span>
-                            <span id="cd-popup-${item.id}" class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                                ${timeMeta.countdownFormatted}
-                            </span>
-                        </div>
-                        
-                        <div>
-                            <h4 class="font-bold text-sm text-gray-900 m-0 leading-tight">${item.location}</h4>
-                            <p class="text-xs text-gray-500 m-0 mt-0.5"><i class="fa-solid fa-user-pen mr-1 text-green-600"></i><b>${item.userName || 'අනනාමික'}</b> • ${timeStr}</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2 rounded-xl border border-gray-100 font-semibold">
-                            <div><i class="fa-solid fa-list-ol text-green-600 mr-1"></i>අලි: <b>${item.count}</b></div>
-                            <div><i class="fa-solid fa-compass text-green-600 mr-1"></i>දිශාව: <b>${item.direction || 'නොදනී'}</b></div>
-                        </div>
-
-                        ${item.image ? `
-                            <div class="relative h-28 rounded-xl overflow-hidden border border-gray-200 cursor-pointer group" onclick="openLightbox('${item.image}')">
-                                <img src="${item.image}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="Elephant Image">
-                                <span class="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md font-bold backdrop-blur-sm"><i class="fa-solid fa-expand mr-1"></i>විශාල කරන්න</span>
+            if (reportsData.length === 0) { renderEmptyState(); } 
+            else {
+                let html = '';
+                reportsData.forEach(item => {
+                    const theme = getRiskTheme(item.risk);
+                    const dt12H = formatDateTime12H(item.timestamp);
+                    const timeMeta = getTimeMeta(item.timestamp);
+                    const safeJson = encodeURIComponent(JSON.stringify(item));
+                    
+                    const imgHtml = item.imgData ? `
+                        <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                            <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold pointer-events-none">
+                                <i class="fa-solid fa-expand mr-1"></i> ලොකුවට බලන්න
                             </div>
-                        ` : ''}
-
-                        <p id="note-popup-${item.id}" class="text-[11px] text-gray-500 leading-snug bg-amber-50 p-2 rounded-lg border border-amber-200 m-0">
-                            <i class="fa-solid fa-clock-rotate-left mr-1 text-amber-600"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
-                        </p>
-
-                        ${buildCommentsSectionHTML(item, false)}
-
-                        ${isOwner ? `
-                            <div class="flex gap-2 pt-1 border-t border-gray-100">
-                                <button onclick="openReportModal('${item.id}')" class="flex-1 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg transition active:scale-95 flex items-center justify-center gap-1">
-                                    <i class="fa-solid fa-pen-to-square"></i> වෙනස් කරන්න
-                                </button>
-                                <button onclick="confirmDeleteReport('${item.id}')" class="py-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition active:scale-95 flex items-center justify-center">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-
-                if (!mapMarkers[item.id]) {
-                    const marker = L.marker([item.lat, item.lng], { icon: markerIcon }).addTo(map);
-                    marker.bindPopup(popupContent, { maxWidth: 290, minWidth: 290 });
-                    mapMarkers[item.id] = marker;
-                } else {
-                    mapMarkers[item.id].setLatLng([item.lat, item.lng]);
-                    mapMarkers[item.id].setIcon(markerIcon);
-                    mapMarkers[item.id].setPopupContent(popupContent);
-                }
-
-                // Render List Card
-                listHTML += `
-                    <div class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition space-y-2 cursor-pointer" onclick="focusOnMap('${item.id}')">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${riskInfo.class}">
-                                    <i class="fa-solid ${riskInfo.icon} mr-1"></i>${riskInfo.label}
+                        </div>` : '';
+                    
+                    const reporterName = item.userName || 'අනනාමික';
+                    const popupCommentsHTML = buildCommentsSectionHTML(item, false);
+                    
+                    const popupHtml = `
+                        <div id="popup-inner-box-${item.id}" class="p-3.5 space-y-2">
+                            <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-100">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}">
+                                    <i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}
                                 </span>
-                                <h3 class="font-bold text-sm text-gray-900 mt-1">${item.location}</h3>
+                                <span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1 shadow-sm">
+                                    <i class="fa-solid fa-stopwatch animate-pulse"></i>
+                                    <span id="cd-popup-${item.id}">${timeMeta.countdownFormatted}</span>
+                                </span>
                             </div>
-                            <span id="cd-list-${item.id}" class="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                                ${timeMeta.remainingMin}m
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between text-xs text-gray-500 font-medium border-t border-gray-50 pt-2">
-                            <span><i class="fa-solid fa-user text-gray-400 mr-1"></i><b>${item.userName || 'අනනාමික'}</b></span>
-                            <span><i class="fa-solid fa-elephant text-green-600 mr-1"></i><b>${item.count}</b> අලි</span>
-                            <span><i class="fa-regular fa-clock text-gray-400 mr-1"></i>${timeStr.split(' ')[1]}</span>
-                        </div>
-                    </div>
-                `;
-            });
 
-            document.getElementById('reportsListContainer').innerHTML = listHTML;
+                            <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 space-y-1.5 shadow-inner">
+                                <div class="text-xs text-gray-800 flex items-center justify-between">
+                                    <span class="text-gray-500 font-medium"><i class="fa-solid fa-user-check text-green-600 mr-1"></i> වාර්තාකරු:</span>
+                                    <b class="text-green-800 text-sm font-bold">${reporterName}</b>
+                                </div>
+                                <div class="text-[11px] text-gray-700 flex flex-col gap-0.5 pt-1 border-t border-gray-200/60">
+                                    <span class="text-gray-500 font-medium"><i class="fa-regular fa-clock text-blue-600 mr-1"></i> දිනය/වේලාව:</span>
+                                    <b class="text-gray-900 font-bold bg-white px-2 py-1 rounded border border-gray-200 text-[11px] leading-snug">${dt12H}</b>
+                                </div>
+                            </div>
+
+                            <div class="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200 space-y-1.5">
+                                <div>
+                                    <span class="text-[10px] text-amber-900 font-bold uppercase tracking-wider block"><i class="fa-solid fa-map-pin mr-1"></i> ස්ථානයේ විස්තරය</span>
+                                    <p class="text-xs font-bold text-gray-900 m-0 leading-tight mt-0.5">${item.location}</p>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-gray-800 pt-1.5 border-t border-amber-200/60 font-medium">
+                                    <span><i class="fa-solid fa-elephant text-amber-700 w-4"></i> අලි ගණන:</span> <b class="text-sm font-bold text-amber-900">${item.count}</b>
+                                </div>
+                                ${item.direction ? `<div class="flex justify-between items-center text-xs text-gray-800 font-medium">
+                                    <span><i class="fa-solid fa-compass text-amber-700 w-4"></i> දිශාව:</span> <b>${item.direction}</b>
+                                </div>` : ''}
+                            </div>
+
+                            ${imgHtml}
+
+                            ${popupCommentsHTML}
+
+                            <div id="note-popup-${item.id}" class="text-[10px] text-amber-900 bg-amber-100/80 p-2 rounded-xl border border-amber-200 text-center font-bold leading-tight">
+                                <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
+                            </div>
+
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
+                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
+                            </div>
+                        </div>`;
+
+                    if (mapMarkers[item.id]) {
+                        mapMarkers[item.id].setLatLng([item.lat, item.lng]);
+                        mapMarkers[item.id].getPopup().setContent(popupHtml);
+                    } else {
+                        const markerHtml = `
+                            <div class="relative flex items-center justify-center w-12 h-12">
+                                <div class="absolute inset-0 rounded-full opacity-50 animate-ping" style="background:${theme.color}"></div>
+                                <div class="relative z-10 w-8 h-8 rounded-full border-[3px] border-white shadow-xl flex items-center justify-center text-white text-[14px]" style="background:${theme.color}">
+                                    <i class="fa-solid fa-elephant"></i>
+                                </div>
+                            </div>`;
+                        const customIcon = L.divIcon({ className:'', html: markerHtml, iconSize: [48,48], iconAnchor: [24,24], popupAnchor: [0, -20] });
+                        
+                        const newMarker = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map).bindPopup(popupHtml, {
+                            autoPan: false,
+                            closeOnClick: false,
+                            autoClose: false
+                        });
+
+                        newMarker.on('popupopen', function(e) {
+                            const innerBox = document.getElementById(`popup-inner-box-${item.id}`);
+                            if (!innerBox) return;
+
+                            let startX = 0, startY = 0;
+                            let isDragging = false;
+                            let touchStartTime = 0;
+
+                            innerBox.addEventListener('touchstart', function(event) {
+                                startX = event.touches[0].clientX;
+                                startY = event.touches[0].clientY;
+                                isDragging = false;
+                                touchStartTime = new Date().getTime();
+                            }, { passive: true });
+
+                            innerBox.addEventListener('touchmove', function(event) {
+                                let moveX = event.touches[0].clientX;
+                                let moveY = event.touches[0].clientY;
+                                
+                                if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
+                                    isDragging = true;
+                                    map.dragging._draggable._onDown(event);
+                                }
+                            }, { passive: true });
+
+                            innerBox.addEventListener('touchend', function(event) {
+                                let touchDuration = new Date().getTime() - touchStartTime;
+                                
+                                // Prevent triggering fullscreen modal when clicking inputs or buttons inside popup
+                                const targetTag = event.target.tagName;
+                                if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'BUTTON' || 
+                                    event.target.closest('button') || event.target.closest('input') || event.target.closest('textarea')) {
+                                    return;
+                                }
+
+                                if (!isDragging && touchDuration < 300) {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
+                                        openFullscreenModal(item.id);
+                                    }
+                                }
+                            });
+                        });
+
+                        mapMarkers[item.id] = newMarker;
+                    }
+
+                    const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm cursor-pointer hover:opacity-90 transition" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
+                    const cCount = (item.comments || []).length;
+
+                    html += `
+                    <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
+                        <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
+                        <div class="pl-2 shrink-0">${thumb}</div>
+                        <div class="flex-1 py-0.5">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}"><i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}</span>
+                                <span class="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100"><i class="fa-solid fa-hourglass-half mr-0.5"></i><span id="cd-list-${item.id}">${timeMeta.remainingMin}m</span></span>
+                            </div>
+                            <h4 class="font-bold text-gray-800 text-sm leading-tight">${item.location}</h4>
+                            <div class="text-[11px] font-bold text-blue-700 mt-1">
+                                <i class="fa-regular fa-clock mr-1"></i> ${dt12H}
+                            </div>
+                            <div class="flex items-center gap-3 mt-1 text-[11px] text-gray-500 font-bold">
+                                <span><i class="fa-solid fa-elephant text-gray-400 mr-1"></i> අලි ${item.count}</span>
+                                <span class="text-green-700 truncate max-w-[90px]"><i class="fa-solid fa-user text-gray-400 mr-1"></i> ${reporterName}</span>
+                                ${cCount > 0 ? `<span class="text-blue-600"><i class="fa-solid fa-comments text-gray-400 mr-0.5"></i> ${cCount}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2 shrink-0">
+                            <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition border border-gray-100"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:text-red-600 hover:bg-red-50 transition border border-gray-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('reportsListContainer').innerHTML = html;
+            }
         }
 
-        window.focusOnMap = (id) => {
-            const report = reportsData.find(r => r.id === id);
-            if (report && mapMarkers[id]) {
-                setBottomSheetState('hidden');
-                map.flyTo([report.lat, report.lng], 16, { duration: 0.8 });
-                setTimeout(() => {
-                    mapMarkers[id].openPopup();
-                    if (map && map.dragging) map.dragging.enable();
-                }, 900);
-            }
+        window.flyAndOpen = (id, lat, lng) => {
+            map.flyTo([lat, lng], 17, { duration: 1 });
+            setTimeout(() => { if(mapMarkers[id]) mapMarkers[id].openPopup(); }, 1100);
         };
 
-        window.openReportModal = (id = null, lat = null, lng = null) => {
+        window.openReportModal = (dataStr = null, lat = null, lng = null) => {
             if (!currentUserName) {
                 openNameChangeModal();
                 showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
                 return;
             }
 
-            const modal = document.getElementById('reportModal');
+            setBottomSheetState('hidden');
+            document.getElementById('mainHeader').classList.add('header-hidden');
+
             const form = document.getElementById('elephantForm');
-            form.reset();
+            form.reset(); removeImage();
+            const dtStr = formatDateTime12H(Date.now());
+            document.getElementById('modalDateTime').innerText = dtStr;
 
-            document.getElementById('formId').value = id || '';
-            document.getElementById('formLat').value = lat || (userMarker ? userMarker.getLatLng().lat : '');
-            document.getElementById('formLng').value = lng || (userMarker ? userMarker.getLatLng().lng : '');
-            document.getElementById('formImageBase64').value = '';
+            const container = document.getElementById('reportModalContainer');
+            const icon = document.getElementById('fullscreenIcon');
+            container.classList.add('max-h-[calc(100dvh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+            container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
+            icon.className = 'fa-solid fa-expand text-xs';
 
-            removeImage();
-
-            if (id) {
-                const report = reportsData.find(r => r.id === id);
-                if (report) {
-                    document.getElementById('modalTitle').innerText = 'වාර්තාව සංශෝධනය';
-                    document.getElementById('submitLabel').innerText = 'යාවත්කාලීන කරන්න';
-                    document.getElementById('formLocation').value = report.location || '';
-                    document.getElementById('formCount').value = report.count || 1;
-                    document.getElementById('formDirection').value = report.direction || '';
-                    document.getElementById('formLat').value = report.lat;
-                    document.getElementById('formLng').value = report.lng;
-                    
-                    const radios = document.getElementsByName('riskLvl');
-                    radios.forEach(r => { r.checked = (r.value === report.risk); });
-
-                    if (report.image) {
-                        document.getElementById('formImageBase64').value = report.image;
-                        document.getElementById('imagePreview').src = report.image;
-                        document.getElementById('imagePreview').classList.remove('hidden');
-                        document.getElementById('uploadPrompt').classList.add('hidden');
-                        document.getElementById('btnRemoveImg').classList.remove('hidden');
-                    }
-                }
+            if (dataStr) {
+                const data = JSON.parse(decodeURIComponent(dataStr));
+                document.getElementById('modalTitle').innerText = "වාර්තාව වෙනස් කරන්න";
+                document.getElementById('submitLabel').innerText = "යාවත්කාලීන කරන්න";
+                document.getElementById('formId').value = data.id;
+                document.getElementById('formLat').value = data.lat;
+                document.getElementById('formLng').value = data.lng;
+                document.getElementById('formLocation').value = data.location;
+                document.getElementById('formCount').value = data.count;
+                document.getElementById('formDirection').value = data.direction || '';
+                document.querySelector(`input[name="riskLvl"][value="${data.risk}"]`).checked = true;
+                if (data.imgData) showImagePreview(data.imgData);
             } else {
-                document.getElementById('modalTitle').innerText = 'නව වාර්තාවක්';
-                document.getElementById('submitLabel').innerText = 'වාර්තා කරන්න';
+                document.getElementById('modalTitle').innerText = "නව වාර්තාවක්";
+                document.getElementById('submitLabel').innerText = "වාර්තා කරන්න";
+                document.getElementById('formId').value = '';
+                document.getElementById('formLat').value = lat;
+                document.getElementById('formLng').value = lng;
             }
-
-            document.getElementById('modalDateTime').innerText = formatDateTime12H(Date.now());
-            modal.classList.remove('hidden');
+            document.getElementById('reportModal').classList.remove('hidden');
         };
 
-        window.closeModal = (modalId) => {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.classList.add('hidden');
-            if (tempMarker) {
-                map.removeLayer(tempMarker);
-                tempMarker = null;
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            if (id === 'reportModal') {
+                document.getElementById('mainHeader').classList.remove('header-hidden');
+                if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
             }
-            if (map && map.dragging) map.dragging.enable();
         };
 
-        window.processImage = (event) => {
-            const file = event.target.files[0];
+        window.triggerEdit = (json) => { closeFullscreenModal(); map.closePopup(); openReportModal(json); };
+        window.triggerDelete = (id) => { closeFullscreenModal(); map.closePopup(); targetDeleteId = id; document.getElementById('deleteModal').classList.remove('hidden'); };
+
+        window.processImage = (e) => {
+            const file = e.target.files[0];
             if (!file) return;
+            if (!file.type.startsWith('image/')) return showToast("ඡායාරූපයක් පමණක් තෝරන්න", "error");
 
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const max = 800;
-
-                    if (width > height) {
-                        if (width > max) { height *= max / width; width = max; }
-                    } else {
-                        if (height > max) { width *= max / height; height = max; }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
+                    const MAX_WIDTH = 500;
+                    let { width, height } = img;
+                    if (width > MAX_WIDTH) { height = Math.floor(height * (MAX_WIDTH / width)); width = MAX_WIDTH; }
+                    canvas.width = width; canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
-                    document.getElementById('formImageBase64').value = compressedBase64;
-                    document.getElementById('imagePreview').src = compressedBase64;
-                    document.getElementById('imagePreview').classList.remove('hidden');
-                    document.getElementById('uploadPrompt').classList.add('hidden');
-                    document.getElementById('btnRemoveImg').classList.remove('hidden');
+                    showImagePreview(canvas.toDataURL('image/jpeg', 0.6));
                 };
-                img.src = e.target.result;
+                img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         };
 
+        window.showImagePreview = (b64) => {
+            document.getElementById('formImageBase64').value = b64;
+            const imgEl = document.getElementById('imagePreview');
+            imgEl.src = b64; imgEl.classList.remove('hidden');
+            document.getElementById('uploadPrompt').classList.add('hidden');
+            document.getElementById('imageOverlay').classList.remove('hidden');
+            document.getElementById('btnRemoveImg').classList.remove('hidden');
+        };
+
         window.removeImage = () => {
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('galleryInput').value = '';
             document.getElementById('formImageBase64').value = '';
             document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imageOverlay').classList.add('hidden');
             document.getElementById('uploadPrompt').classList.remove('hidden');
             document.getElementById('btnRemoveImg').classList.add('hidden');
-            document.getElementById('cameraInput').value = '';
-            document.getElementById('galleryInput').value = '';
         };
 
         document.getElementById('elephantForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btnSubmit = document.getElementById('btnSubmit');
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සුරකිමින්...`;
+            if (!db) return;
 
-            const id = document.getElementById('formId').value;
-            const lat = parseFloat(document.getElementById('formLat').value);
-            const lng = parseFloat(document.getElementById('formLng').value);
-
-            if (isNaN(lat) || isNaN(lng)) {
-                showToast("කරුණාකර සිතියමෙන් නිවැරදි ස්ථානයක් තෝරන්න.", "error");
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${id ? 'යාවත්කාලීන කරන්න' : 'වාර්තා කරන්න'}`;
-                return;
-            }
-
-            const riskLevel = document.querySelector('input[name="riskLvl"]:checked').value;
-
-            const payload = {
-                location: document.getElementById('formLocation').value.trim(),
-                count: parseInt(document.getElementById('formCount').value) || 1,
-                direction: document.getElementById('formDirection').value.trim(),
-                risk: riskLevel,
-                image: document.getElementById('formImageBase64').value || null,
-                lat: lat,
-                lng: lng,
-                userName: currentUserName || 'අනනාමික',
-                userId: currentUser.uid || 'web-user',
-                timestamp: Date.now()
-            };
+            const btn = document.getElementById('btnSubmit');
+            const origLabel = document.getElementById('submitLabel').innerText;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සැකසෙමින්...`;
+            btn.disabled = true;
 
             try {
+                const id = document.getElementById('formId').value;
+                const payload = {
+                    location: document.getElementById('formLocation').value.trim(),
+                    count: parseInt(document.getElementById('formCount').value) || 1,
+                    direction: document.getElementById('formDirection').value.trim(),
+                    risk: document.querySelector('input[name="riskLvl"]:checked').value,
+                    lat: parseFloat(document.getElementById('formLat').value),
+                    lng: parseFloat(document.getElementById('formLng').value),
+                    imgData: document.getElementById('formImageBase64').value,
+                    userId: currentUser.uid,
+                    userName: currentUserName || 'අනනාමික',
+                    timestamp: Date.now() 
+                };
+
+                const collRef = collection(db, 'reports');
+
                 if (id) {
-                    await updateDoc(doc(db, 'reports', id), payload);
-                    showToast("වාර්තාව සාර්ථකව යාවත්කාලීන කරන ලදී!");
+                    await updateDoc(doc(collRef, id), payload);
+                    showToast("වාර්තාව සාර්ථකව වෙනස් කරන ලදී.");
                 } else {
                     payload.comments = [];
-                    await addDoc(collection(db, 'reports'), payload);
-                    showToast("නව වාර්තාව සාර්ථකව ඇතුළත් කෙරිණි!");
+                    await addDoc(collRef, payload);
+                    showToast("අනතුරු ඇඟවීම සාර්ථකව පද්ධතියට එක් කළා.");
                 }
                 closeModal('reportModal');
             } catch (err) {
-                console.error("Save error:", err);
-                showToast("වාර්තාව සුරැකීමේ දෝෂයකි.", "error");
+                console.error("Save failed:", err);
+                showToast("සුරැකීමේදී දෝෂයක් ඇතිවිය.", "error");
             } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${id ? 'යාවත්කාලීන කරන්න' : 'වාර්තා කරන්න'}`;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">${origLabel}</span>`;
+                btn.disabled = false;
             }
         });
-
-        window.confirmDeleteReport = (id) => {
-            targetDeleteId = id;
-            document.getElementById('deleteModal').classList.remove('hidden');
-        };
 
         document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
-            if (!targetDeleteId) return;
+            if (!targetDeleteId || !db) return;
             try {
                 await deleteDoc(doc(db, 'reports', targetDeleteId));
-                showToast("වාර්තාව පද්ධතියෙන් ඉවත් කරන ලදී.");
+                showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
                 closeModal('deleteModal');
             } catch (err) {
-                console.error("Delete error:", err);
-                showToast("ඉවත් කිරීමේ දෝෂයකි.", "error");
-            } finally {
-                targetDeleteId = null;
+                showToast("මකා දැමීම අසාර්ථකයි.", "error");
             }
         });
 
-        window.closeFullscreenModal = () => {
-            document.getElementById('fullscreen-modal').classList.add('hidden');
-        };
-
-        // DOM Ready Load Handler
         window.addEventListener('DOMContentLoaded', () => {
+            checkUserLogin();
             initializeMap();
             connectFirebase();
-            checkUserLogin();
             initSwipeGestures();
         });
     </script>
