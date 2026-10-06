@@ -788,17 +788,17 @@
             const newComment = {
                 id: 'cm_' + Date.now() + Math.random().toString(36.2),
                 userName: currentUserName,
-                userId: currentUser.uid, // සටහන: තමන්ගේ කමෙන්ට් පමණක් මකන්න/සංස්කරණය කරන්න අවශ්‍ය පාලනය සඳහා
+                userId: currentUser.uid, 
                 text: text,
                 timestamp: Date.now()
             };
 
-            comments.unshift(newComment); // අලුත්ම කමෙන්ට් එක ඉහළින්ම දැමීමට
+            comments.unshift(newComment); 
 
             try {
                 await updateDoc(doc(collection(db, 'reports'), reportId), { comments: comments });
                 inputEl.value = '';
-                showToast("კomment එක සාර්ථකව එකතු කරන ලදී.");
+                showToast("Comment එක සාර්ථකව එකතු කරන ලදී.");
             } catch (err) {
                 console.error("Comment add error:", err);
                 showToast("Comment එක එකතු කිරීම අසාර්ථකයි.", "error");
@@ -828,7 +828,7 @@
 
             let comments = targetReport.comments.map(c => {
                 if (c.id === commentId) {
-                    return { ...c, text: newText.trim(), timestamp: Date.now() }; // Updated time optional or keep original
+                    return { ...c, text: newText.trim(), timestamp: Date.now() }; 
                 }
                 return c;
             });
@@ -848,7 +848,6 @@
             } else {
                 comments.forEach(c => {
                     const cTimeStr = formatDateTime12H(c.timestamp);
-                    // තමන් දාපු කමෙන්ට් පමණක් සංස්කරණය කිරීමට හෝ මකා දැමීමට හැකියාව (currentUserName සමග සසඳමින්)
                     const isOwner = (c.userName === currentUserName);
                     
                     listHtml += `
@@ -999,12 +998,11 @@
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
 
-                            <!-- Comment Section Inserted inside popup without layout distortion -->
                             ${commentsSectionHtml}
 
                             <div class="flex gap-2 pt-2">
                                 <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
-                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
+                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
                             </div>
                         </div>`;
 
@@ -1108,7 +1106,6 @@
                                                     <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                                                 </div>
 
-                                                <!-- Advanced Fullscreen Comment Section -->
                                                 ${fullCommentsHtml}
 
                                                 <div class="flex gap-3 pt-3">
