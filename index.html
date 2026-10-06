@@ -428,7 +428,7 @@
                 sheet.classList.add('sheet-fullscreen');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.add('header-hidden');
-                if (map) map.closePopup(); // Map Popup එක වසයි
+                if (map) map.closePopup(); 
             } else if (state === 'hidden') {
                 sheet.classList.add('sheet-hidden');
                 if (icon) icon.className = 'fa-solid fa-chevron-up text-xs';
@@ -437,7 +437,7 @@
                 sheet.classList.add('sheet-normal');
                 if (icon) icon.className = 'fa-solid fa-chevron-down text-xs';
                 header.classList.remove('header-hidden');
-                if (map) map.closePopup(); // Map Popup එක වසයි
+                if (map) map.closePopup(); 
             }
         }
 
@@ -820,8 +820,8 @@
                     
                     const imgHtml = item.imgData ? `
                         <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
-                            <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200">
-                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                            <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold pointer-events-none">
                                 <i class="fa-solid fa-expand mr-1"></i> ලොකුවට බලන්න
                             </div>
                         </div>` : '';
@@ -923,12 +923,11 @@
                             innerBox.addEventListener('touchend', function(event) {
                                 let touchDuration = new Date().getTime() - touchStartTime;
                                 
+                                // පින්තූරය හෝ බට්න් එක ක්ලික් කළ විට පොප්අප් එකේ ෆුල්ස්ක්‍රීන් විස්තරය විවෘත වීම වැළැක්වීම
                                 if (!isDragging && touchDuration < 300) {
-                                    // Image එකක් මත Click නොකළේ නම් පමණක් Fullscreen යන්න
-                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG') {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
                                         const fullModalBody = document.getElementById('fullscreen-modal-body');
                                         
-                                        // Pop-up ආකෘතියටම Fullscreen ඩිසයින් එක
                                         fullModalBody.innerHTML = `
                                             <div class="space-y-4 pb-8">
                                                 <div class="flex items-center justify-between gap-1 pb-3 border-b border-gray-100">
@@ -967,8 +966,8 @@
 
                                                 ${item.imgData ? `
                                                 <div class="mt-3 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
-                                                    <img src="${item.imgData}" class="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-200">
-                                                    <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-bold">
+                                                    <img src="${item.imgData}" class="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-200" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                                                    <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-bold pointer-events-none">
                                                         <i class="fa-solid fa-expand mr-2"></i> ලොකුවට බලන්න
                                                     </div>
                                                 </div>` : ''}
