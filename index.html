@@ -849,9 +849,9 @@
                 editingComment = { reportId: null, commentId: null };
                 showToast("අදහස යාවත්කාලීන කරන ලදී.");
             } else {
-                // Add new comment on top (newest first)
+                // Fixed Code: Math.random().toString(36).substring(2, 7)
                 const newComment = {
-                    id: 'c_' + Date.now() + Math.random().toString(36.substring(2, 7)),
+                    id: 'c_' + Date.now() + Math.random().toString(36).substring(2, 7),
                     userName: currentUserName,
                     text: text,
                     timestamp: Date.now()
@@ -865,7 +865,6 @@
                 await updateDoc(docRef, { comments });
                 inputEl.value = '';
                 
-                // Reset submit button text if was editing
                 const btnId = isFullscreen ? `comment-btn-full-${reportId}` : `comment-btn-popup-${reportId}`;
                 const btnEl = document.getElementById(btnId);
                 if(btnEl) btnEl.innerHTML = `<i class="fa-solid fa-paper-plane"></i>`;
@@ -924,7 +923,8 @@
             comments.forEach(c => {
                 const isOwner = c.userName === currentUserName;
                 const commentTime = formatDateTime12H(c.timestamp);
-                const safeText = c.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                // Fixed Code: escaping newlines
+                const safeText = c.text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, "\\n");
 
                 html += `
                 <div class="bg-white p-2.5 rounded-xl border border-gray-200/80 shadow-2xs space-y-1">
@@ -1076,7 +1076,6 @@
                                 
                                 if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
                                     isDragging = true;
-                                    map.dragging._draggable._onDown(event);
                                 }
                             }, { passive: true });
 
@@ -1237,7 +1236,10 @@
                 document.getElementById('formLocation').value = data.location;
                 document.getElementById('formCount').value = data.count;
                 document.getElementById('formDirection').value = data.direction || '';
-                document.querySelector(`input[name="riskLvl"][value="${data.risk}"]`).checked = true;
+                
+                const riskInput = document.querySelector(`input[name="riskLvl"][value="${data.risk}"]`);
+                if (riskInput) riskInput.checked = true;
+
                 if (data.imgData) showImagePreview(data.imgData);
             } else {
                 document.getElementById('modalTitle').innerText = "නව වාර්තාවක්";
