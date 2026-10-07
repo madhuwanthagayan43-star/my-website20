@@ -1114,262 +1114,270 @@
                             </div>
 
                             <div class="flex gap-2 pt-1">
-                                <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-[11px] py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm">
-                                    <i class="fa-solid fa-pen mr-1"></i> වෙනස්
-                                </button>
-                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-[11px] py-1.5 rounded-lg font-bold hover:bg-red-100 transition border border-red-200 active:scale-95 shadow-sm">
-                                    <i class="fa-solid fa-trash mr-1"></i> මකන්න
-                                </button>
-                                <button onclick="event.stopPropagation(); openFullscreenModal('${item.id}')" class="flex-1 bg-gray-100 text-gray-700 text-[11px] py-1.5 rounded-lg font-bold hover:bg-gray-200 transition border border-gray-200 active:scale-95 shadow-sm">
-                                    <i class="fa-solid fa-expand mr-1"></i> විස්තර
-                                </button>
+                                <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-xs py-2 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen mr-1"></i> වෙනස්</button>
+                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-xs py-2 rounded-xl font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash mr-1"></i> මකන්න</button>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
 
-                    // Create/Update Map Marker
-                    if (!mapMarkers[item.id]) {
-                        const markerColor = theme.color;
-                        const icon = L.divIcon({
-                            className: '',
-                            html: `
-                                <div style="background-color: ${markerColor}; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 3px solid white; position: relative;">
-                                    <i class="fa-solid fa-elephant text-lg"></i>
-                                    <span style="position: absolute; top: -6px; right: -6px; background: white; color: ${markerColor}; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 10px; border: 1px solid ${markerColor};">${item.count}</span>
-                                </div>`,
-                            iconSize: [38, 38],
-                            iconAnchor: [19, 19]
+                    if (mapMarkers[item.id]) {
+                        mapMarkers[item.id].setLatLng([item.lat, item.lng]);
+                        mapMarkers[item.id].getPopup().setContent(popupHtml);
+                    } else {
+                        const markerHtml = `
+                            <div class="relative flex items-center justify-center w-12 h-12">
+                                <div class="absolute inset-0 rounded-full opacity-50 animate-ping" style="background:${theme.color}"></div>
+                                <div class="relative z-10 w-8 h-8 rounded-full border-[3px] border-white shadow-xl flex items-center justify-center text-white text-[14px]" style="background:${theme.color}">
+                                    <i class="fa-solid fa-elephant"></i>
+                                </div>
+                            </div>`;
+                        const customIcon = L.divIcon({ className:'', html: markerHtml, iconSize: [48,48], iconAnchor: [24,24], popupAnchor: [0, -20] });
+                        
+                        const newMarker = L.marker([item.lat, item.lng], {icon: customIcon}).addTo(map).bindPopup(popupHtml, {
+                            autoPan: false,
+                            closeOnClick: false,
+                            autoClose: false
                         });
 
-                        const marker = L.marker([item.lat, item.lng], { icon }).addTo(map);
-                        marker.bindPopup(popupHtml, { maxWidth: 290, minWidth: 290 });
-                        mapMarkers[item.id] = marker;
-                    } else {
-                        mapMarkers[item.id].setPopupContent(popupHtml);
+                        newMarker.on('popupopen', function(e) {
+                            const innerBox = document.getElementById(`popup-inner-box-${item.id}`);
+                            if (!innerBox) return;
+
+                            let startX = 0, startY = 0;
+                            let isDragging = false;
+                            let touchStartTime = 0;
+
+                            innerBox.addEventListener('touchstart', function(event) {
+                                startX = event.touches[0].clientX;
+                                startY = event.touches[0].clientY;
+                                isDragging = false;
+                                touchStartTime = new Date().getTime();
+                            }, { passive: true });
+
+                            innerBox.addEventListener('touchmove', function(event) {
+                                let moveX = event.touches[0].clientX;
+                                let moveY = event.touches[0].clientY;
+                                
+                                if (Math.abs(moveX - startX) > 5 || Math.abs(moveY - startY) > 5) {
+                                    isDragging = true;
+                                    map.dragging._draggable._onDown(event);
+                                }
+                            }, { passive: true });
+
+                            innerBox.addEventListener('touchend', function(event) {
+                                let touchDuration = new Date().getTime() - touchStartTime;
+                                
+                                // Prevent triggering fullscreen modal when clicking inputs or buttons inside popup
+                                const targetTag = event.target.tagName;
+                                if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'BUTTON' || 
+                                    event.target.closest('button') || event.target.closest('input') || event.target.closest('textarea')) {
+                                    return;
+                                }
+
+                                if (!isDragging && touchDuration < 300) {
+                                    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button') && event.target.tagName !== 'IMG' && !event.target.closest('img')) {
+                                        openFullscreenModal(item.id);
+                                    }
+                                }
+                            });
+                        });
+
+                        mapMarkers[item.id] = newMarker;
                     }
 
-                    // Build Bottom Sheet List Item HTML
+                    const thumb = item.imgData ? `<img src="${item.imgData}" class="w-16 h-16 rounded-xl object-cover shadow-sm cursor-pointer hover:opacity-90 transition" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">` : `<div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200"><i class="fa-solid fa-image text-gray-300 text-xl"></i></div>`;
+                    const cCount = (item.comments || []).length;
+
                     html += `
-                        <div onclick="focusMarker('${item.id}', ${item.lat}, ${item.lng})" class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-between gap-3 active:scale-[0.98]">
-                            <div class="flex items-center gap-3 overflow-hidden">
-                                <div class="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-white text-xl shadow-inner ${theme.class}">
-                                    <i class="fa-solid ${theme.icon}"></i>
-                                </div>
-                                <div class="truncate">
-                                    <div class="flex items-center gap-2">
-                                        <h4 class="font-bold text-gray-900 text-sm truncate">${item.location}</h4>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${theme.class}">${theme.label}</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-2 truncate">
-                                        <span><i class="fa-solid fa-elephant text-amber-700 mr-1"></i>අලි ${item.count}ක්</span>
-                                        <span>•</span>
-                                        <span><i class="fa-solid fa-user-circle text-gray-400 mr-1"></i>${reporterName}</span>
-                                    </p>
-                                </div>
+                    <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-start gap-3 relative cursor-pointer hover:shadow-md transition-shadow group" onclick="flyAndOpen('${item.id}', ${item.lat}, ${item.lng})">
+                        <div class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background-color:${theme.color}"></div>
+                        <div class="pl-2 shrink-0">${thumb}</div>
+                        <div class="flex-1 py-0.5">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.class}"><i class="fa-solid ${theme.icon} mr-1"></i>${theme.label}</span>
+                                <span class="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100"><i class="fa-solid fa-hourglass-half mr-0.5"></i><span id="cd-list-${item.id}">${timeMeta.remainingMin}m</span></span>
                             </div>
-                            <div class="flex flex-col items-end shrink-0 gap-1">
-                                <span class="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
-                                    <i class="fa-solid fa-clock text-[10px]"></i>
-                                    <span id="cd-list-${item.id}">${timeMeta.remainingMin}m</span>
-                                </span>
-                                <span class="text-[10px] text-gray-400 font-medium">${dt12H.split(' ')[1]} ${dt12H.split(' ')[2]}</span>
+                            <h4 class="font-bold text-gray-800 text-sm leading-tight">${item.location}</h4>
+                            <div class="text-[11px] font-bold text-blue-700 mt-1">
+                                <i class="fa-regular fa-clock mr-1"></i> ${dt12H}
+                            </div>
+                            <div class="flex items-center gap-3 mt-1 text-[11px] text-gray-500 font-bold">
+                                <span><i class="fa-solid fa-elephant text-gray-400 mr-1"></i> අලි ${item.count}</span>
+                                <span class="text-green-700 truncate max-w-[90px]"><i class="fa-solid fa-user text-gray-400 mr-1"></i> ${reporterName}</span>
+                                ${cCount > 0 ? `<span class="text-blue-600"><i class="fa-solid fa-comments text-gray-400 mr-0.5"></i> ${cCount}</span>` : ''}
                             </div>
                         </div>
-                    `;
+                        <div class="flex flex-col gap-2 shrink-0">
+                            <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition border border-gray-100"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:text-red-600 hover:bg-red-50 transition border border-gray-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>`;
                 });
-
                 document.getElementById('reportsListContainer').innerHTML = html;
             }
         }
 
-        window.focusMarker = (id, lat, lng) => {
-            if (map && mapMarkers[id]) {
-                map.flyTo([lat, lng], 16, { duration: 0.8 });
-                setTimeout(() => {
-                    mapMarkers[id].openPopup();
-                }, 800);
-            }
+        window.flyAndOpen = (id, lat, lng) => {
+            map.flyTo([lat, lng], 17, { duration: 1 });
+            setTimeout(() => { if(mapMarkers[id]) mapMarkers[id].openPopup(); }, 1100);
         };
 
-        window.openReportModal = (item = null, lat = null, lng = null) => {
+        window.openReportModal = (dataStr = null, lat = null, lng = null) => {
             if (!currentUserName) {
                 openNameChangeModal();
-                showToast("වාර්තාවක් ඇතුළත් කිරීමට ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
+                showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
                 return;
             }
 
-            const modal = document.getElementById('reportModal');
+            setBottomSheetState('hidden');
+            document.getElementById('mainHeader').classList.add('header-hidden');
+
             const form = document.getElementById('elephantForm');
-            form.reset();
+            form.reset(); removeImage();
+            const dtStr = formatDateTime12H(Date.now());
+            document.getElementById('modalDateTime').innerText = dtStr;
 
-            document.getElementById('formImageBase64').value = '';
-            document.getElementById('imagePreview').src = '';
-            document.getElementById('imagePreview').classList.add('hidden');
-            document.getElementById('imageOverlay').classList.add('hidden');
-            document.getElementById('uploadPrompt').classList.remove('hidden');
-            document.getElementById('btnRemoveImg').classList.add('hidden');
+            const container = document.getElementById('reportModalContainer');
+            const icon = document.getElementById('fullscreenIcon');
+            container.classList.add('max-h-[calc(100dvh-20px)]', 'max-w-lg', 'rounded-t-[32px]', 'sm:rounded-[32px]');
+            container.classList.remove('h-full', 'w-full', 'max-w-none', 'rounded-none');
+            icon.className = 'fa-solid fa-expand text-xs';
 
-            const now = new Date();
-            document.getElementById('modalDateTime').innerText = formatDateTime12H(now.getTime());
-
-            if (item) {
-                // Editing
+            if (dataStr) {
+                const data = JSON.parse(decodeURIComponent(dataStr));
                 document.getElementById('modalTitle').innerText = "වාර්තාව වෙනස් කරන්න";
-                document.getElementById('submitLabel').innerText = "සුරකින්න";
-                document.getElementById('formId').value = item.id;
-                document.getElementById('formLat').value = item.lat;
-                document.getElementById('formLng').value = item.lng;
-                document.getElementById('formLocation').value = item.location || '';
-                document.getElementById('formCount').value = item.count || 1;
-                document.getElementById('formDirection').value = item.direction || '';
-
-                if (item.imgData) {
-                    document.getElementById('formImageBase64').value = item.imgData;
-                    document.getElementById('imagePreview').src = item.imgData;
-                    document.getElementById('imagePreview').classList.remove('hidden');
-                    document.getElementById('imageOverlay').classList.remove('hidden');
-                    document.getElementById('uploadPrompt').classList.add('hidden');
-                    document.getElementById('btnRemoveImg').classList.remove('hidden');
-                }
-
-                const riskRadios = document.getElementsByName('riskLvl');
-                for (let r of riskRadios) {
-                    if (r.value === item.risk) r.checked = true;
-                }
+                document.getElementById('submitLabel').innerText = "යාවත්කාලීන කරන්න";
+                document.getElementById('formId').value = data.id;
+                document.getElementById('formLat').value = data.lat;
+                document.getElementById('formLng').value = data.lng;
+                document.getElementById('formLocation').value = data.location;
+                document.getElementById('formCount').value = data.count;
+                document.getElementById('formDirection').value = data.direction || '';
+                document.querySelector(`input[name="riskLvl"][value="${data.risk}"]`).checked = true;
+                if (data.imgData) showImagePreview(data.imgData);
             } else {
-                // New Report
                 document.getElementById('modalTitle').innerText = "නව වාර්තාවක්";
                 document.getElementById('submitLabel').innerText = "වාර්තා කරන්න";
                 document.getElementById('formId').value = '';
                 document.getElementById('formLat').value = lat;
                 document.getElementById('formLng').value = lng;
             }
-
-            modal.classList.remove('hidden');
+            document.getElementById('reportModal').classList.remove('hidden');
         };
 
-        window.closeModal = (modalId) => {
-            const el = document.getElementById(modalId);
-            if (el) el.classList.add('hidden');
-            if (tempMarker) {
-                map.removeLayer(tempMarker);
-                tempMarker = null;
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            if (id === 'reportModal') {
+                document.getElementById('mainHeader').classList.remove('header-hidden');
+                if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
             }
         };
+
+        window.triggerEdit = (json) => { closeFullscreenModal(); map.closePopup(); openReportModal(json); };
+        window.triggerDelete = (id) => { closeFullscreenModal(); map.closePopup(); targetDeleteId = id; document.getElementById('deleteModal').classList.remove('hidden'); };
 
         window.processImage = (e) => {
             const file = e.target.files[0];
             if (!file) return;
+            if (!file.type.startsWith('image/')) return showToast("ඡායාරූපයක් පමණක් තෝරන්න", "error");
 
             const reader = new FileReader();
-            reader.onload = function(evt) {
-                const base64 = evt.target.result;
-                document.getElementById('formImageBase64').value = base64;
-                document.getElementById('imagePreview').src = base64;
-                document.getElementById('imagePreview').classList.remove('hidden');
-                document.getElementById('imageOverlay').classList.remove('hidden');
-                document.getElementById('uploadPrompt').classList.add('hidden');
-                document.getElementById('btnRemoveImg').classList.remove('hidden');
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 500;
+                    let { width, height } = img;
+                    if (width > MAX_WIDTH) { height = Math.floor(height * (MAX_WIDTH / width)); width = MAX_WIDTH; }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    showImagePreview(canvas.toDataURL('image/jpeg', 0.6));
+                };
+                img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         };
 
+        window.showImagePreview = (b64) => {
+            document.getElementById('formImageBase64').value = b64;
+            const imgEl = document.getElementById('imagePreview');
+            imgEl.src = b64; imgEl.classList.remove('hidden');
+            document.getElementById('uploadPrompt').classList.add('hidden');
+            document.getElementById('imageOverlay').classList.remove('hidden');
+            document.getElementById('btnRemoveImg').classList.remove('hidden');
+        };
+
         window.removeImage = () => {
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('galleryInput').value = '';
             document.getElementById('formImageBase64').value = '';
             document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreview').classList.add('hidden');
             document.getElementById('imageOverlay').classList.add('hidden');
             document.getElementById('uploadPrompt').classList.remove('hidden');
             document.getElementById('btnRemoveImg').classList.add('hidden');
-            document.getElementById('cameraInput').value = '';
-            document.getElementById('galleryInput').value = '';
         };
 
-        window.triggerEdit = (jsonStr) => {
+        document.getElementById('elephantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!db) return;
+
+            const btn = document.getElementById('btnSubmit');
+            const origLabel = document.getElementById('submitLabel').innerText;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සැකසෙමින්...`;
+            btn.disabled = true;
+
             try {
-                const item = JSON.parse(decodeURIComponent(jsonStr));
-                if (activeFullscreenReportId) closeFullscreenModal();
-                openReportModal(item);
-            } catch (err) {
-                console.error("Edit parse error:", err);
-            }
-        };
+                const id = document.getElementById('formId').value;
+                const payload = {
+                    location: document.getElementById('formLocation').value.trim(),
+                    count: parseInt(document.getElementById('formCount').value) || 1,
+                    direction: document.getElementById('formDirection').value.trim(),
+                    risk: document.querySelector('input[name="riskLvl"]:checked').value,
+                    lat: parseFloat(document.getElementById('formLat').value),
+                    lng: parseFloat(document.getElementById('formLng').value),
+                    imgData: document.getElementById('formImageBase64').value,
+                    userId: currentUser.uid,
+                    userName: currentUserName || 'අනනාමික',
+                    timestamp: Date.now() 
+                };
 
-        window.triggerDelete = (id) => {
-            targetDeleteId = id;
-            document.getElementById('deleteModal').classList.remove('hidden');
-        };
+                const collRef = collection(db, 'reports');
+
+                if (id) {
+                    await updateDoc(doc(collRef, id), payload);
+                    showToast("වාර්තාව සාර්ථකව වෙනස් කරන ලදී.");
+                } else {
+                    payload.comments = [];
+                    await addDoc(collRef, payload);
+                    showToast("අනතුරු ඇඟවීම සාර්ථකව පද්ධතියට එක් කළා.");
+                }
+                closeModal('reportModal');
+            } catch (err) {
+                console.error("Save failed:", err);
+                showToast("සුරැකීමේදී දෝෂයක් ඇතිවිය.", "error");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">${origLabel}</span>`;
+                btn.disabled = false;
+            }
+        });
 
         document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
-            if (!targetDeleteId) return;
+            if (!targetDeleteId || !db) return;
             try {
                 await deleteDoc(doc(db, 'reports', targetDeleteId));
-                closeModal('deleteModal');
-                if (activeFullscreenReportId === targetDeleteId) closeFullscreenModal();
                 showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
+                closeModal('deleteModal');
             } catch (err) {
-                console.error("Delete error:", err);
                 showToast("මකා දැමීම අසාර්ථකයි.", "error");
             }
         });
 
-        // Form Submit Handler
-        document.getElementById('elephantForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const id = document.getElementById('formId').value;
-            const lat = parseFloat(document.getElementById('formLat').value);
-            const lng = parseFloat(document.getElementById('formLng').value);
-            const location = document.getElementById('formLocation').value.trim();
-            const count = parseInt(document.getElementById('formCount').value) || 1;
-            const direction = document.getElementById('formDirection').value.trim();
-            const imgData = document.getElementById('formImageBase64').value;
-
-            let risk = 'high';
-            const riskRadios = document.getElementsByName('riskLvl');
-            for (let r of riskRadios) {
-                if (r.checked) risk = r.value;
-            }
-
-            const btnSubmit = document.getElementById('btnSubmit');
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සුරකිමින්...`;
-
-            try {
-                if (id) {
-                    // Update
-                    await updateDoc(doc(db, 'reports', id), {
-                        location, count, direction, risk, imgData,
-                        userName: currentUserName || 'අනනාමික'
-                    });
-                    showToast("වාර්තාව යාවත්කාලීන කරන ලදී!");
-                } else {
-                    // Create
-                    await addDoc(collection(db, 'reports'), {
-                        lat, lng, location, count, direction, risk, imgData,
-                        timestamp: Date.now(),
-                        userName: currentUserName || 'අනනාමික',
-                        comments: []
-                    });
-                    showToast("නව වාර්තාව සාර්ථකව ඇතුළත් කරන ලදී!");
-                }
-
-                closeModal('reportModal');
-            } catch (err) {
-                console.error("Save error:", err);
-                showToast("සුරැකීමේ දෝෂයක් සිදු විය.", "error");
-            } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>`;
-            }
-        });
-
-        // Init on DOM Content Loaded
         window.addEventListener('DOMContentLoaded', () => {
+            checkUserLogin();
             initializeMap();
             connectFirebase();
             initSwipeGestures();
-            checkUserLogin();
         });
     </script>
 </body>
