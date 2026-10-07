@@ -1039,6 +1039,7 @@
                 if (!activeIds.includes(id)) { map.removeLayer(mapMarkers[id]); delete mapMarkers[id]; }
             });
 
+            // Update open Fullscreen Modal if active
             if (activeFullscreenReportId) {
                 const activeReport = reportsData.find(r => r.id === activeFullscreenReportId);
                 if (activeReport) {
@@ -1048,9 +1049,8 @@
                 }
             }
 
-            if (reportsData.length === 0) { 
-                renderEmptyState(); 
-            } else {
+            if (reportsData.length === 0) { renderEmptyState(); } 
+            else {
                 let html = '';
                 reportsData.forEach(item => {
                     const theme = getRiskTheme(item.risk);
@@ -1113,135 +1113,145 @@
                                 <i class="fa-solid fa-clock-rotate-left mr-1"></i> මේ නිවේදනය එක්කර <b>${timeMeta.elapsedMin} min</b> ගතවී ඇත. තව <b>${timeMeta.remainingMin} min</b> වලින් සිතියමෙන් මැකී යයි.
                             </div>
 
-                            <div class="flex gap-1.5 pt-1">
-                                <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-[11px] py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm flex items-center justify-center gap-1"><i class="fa-solid fa-pen"></i> වෙනස්</button>
-                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-[11px] py-1.5 rounded-lg font-bold hover:bg-red-100 transition border border-red-200 active:scale-95 shadow-sm flex items-center justify-center gap-1"><i class="fa-solid fa-trash"></i> මකන්න</button>
-                                <button onclick="event.stopPropagation(); openFullscreenModal('${item.id}')" class="flex-1 bg-gray-50 text-gray-700 text-[11px] py-1.5 rounded-lg font-bold hover:bg-gray-100 transition border border-gray-200 active:scale-95 shadow-sm flex items-center justify-center gap-1"><i class="fa-solid fa-expand"></i> විස්තර</button>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-[11px] py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm">
+                                    <i class="fa-solid fa-pen mr-1"></i> වෙනස්
+                                </button>
+                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-[11px] py-1.5 rounded-lg font-bold hover:bg-red-100 transition border border-red-200 active:scale-95 shadow-sm">
+                                    <i class="fa-solid fa-trash mr-1"></i> මකන්න
+                                </button>
+                                <button onclick="event.stopPropagation(); openFullscreenModal('${item.id}')" class="flex-1 bg-gray-100 text-gray-700 text-[11px] py-1.5 rounded-lg font-bold hover:bg-gray-200 transition border border-gray-200 active:scale-95 shadow-sm">
+                                    <i class="fa-solid fa-expand mr-1"></i> විස්තර
+                                </button>
                             </div>
                         </div>
                     `;
 
-                    // Create or update Leaflet Map Marker
+                    // Create/Update Map Marker
                     if (!mapMarkers[item.id]) {
-                        const markerIcon = L.divIcon({
+                        const markerColor = theme.color;
+                        const icon = L.divIcon({
                             className: '',
                             html: `
-                                <div style="background-color: ${theme.color}; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 16px; position: relative;">
-                                    <i class="fa-solid fa-elephant"></i>
-                                    <span style="position: absolute; top: -6px; right: -6px; background: #111827; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;">${item.count}</span>
-                                </div>
-                            `,
+                                <div style="background-color: ${markerColor}; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 3px solid white; position: relative;">
+                                    <i class="fa-solid fa-elephant text-lg"></i>
+                                    <span style="position: absolute; top: -6px; right: -6px; background: white; color: ${markerColor}; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 10px; border: 1px solid ${markerColor};">${item.count}</span>
+                                </div>`,
                             iconSize: [38, 38],
                             iconAnchor: [19, 19]
                         });
 
-                        const marker = L.marker([item.lat, item.lng], { icon: markerIcon }).addTo(map);
+                        const marker = L.marker([item.lat, item.lng], { icon }).addTo(map);
                         marker.bindPopup(popupHtml, { maxWidth: 290, minWidth: 290 });
                         mapMarkers[item.id] = marker;
                     } else {
-                        mapMarkers[item.id].setLatLng([item.lat, item.lng]);
-                        mapMarkers[item.id].getPopup().setContent(popupHtml);
+                        mapMarkers[item.id].setPopupContent(popupHtml);
                     }
 
-                    // Build Bottom Sheet Item List
+                    // Build Bottom Sheet List Item HTML
                     html += `
-                        <div class="bg-gray-50 hover:bg-gray-100/80 p-3.5 rounded-2xl border border-gray-200/80 transition cursor-pointer shadow-sm flex flex-col gap-2" onclick="focusReportOnMap('${item.id}', ${item.lat}, ${item.lng})">
-                            <div class="flex justify-between items-start">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-xs font-bold px-2.5 py-1 rounded-lg border ${theme.class} flex items-center gap-1">
-                                        <i class="fa-solid ${theme.icon}"></i> ${theme.label}
-                                    </span>
-                                    <span class="text-xs font-bold text-gray-800 bg-gray-200/60 px-2 py-0.5 rounded-md">
-                                        <i class="fa-solid fa-elephant text-amber-700 mr-1"></i>${item.count}
-                                    </span>
+                        <div onclick="focusMarker('${item.id}', ${item.lat}, ${item.lng})" class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-between gap-3 active:scale-[0.98]">
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <div class="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-white text-xl shadow-inner ${theme.class}">
+                                    <i class="fa-solid ${theme.icon}"></i>
                                 </div>
-                                <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
-                                    <i class="fa-solid fa-stopwatch text-[10px] animate-pulse"></i>
+                                <div class="truncate">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-bold text-gray-900 text-sm truncate">${item.location}</h4>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${theme.class}">${theme.label}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-2 truncate">
+                                        <span><i class="fa-solid fa-elephant text-amber-700 mr-1"></i>අලි ${item.count}ක්</span>
+                                        <span>•</span>
+                                        <span><i class="fa-solid fa-user-circle text-gray-400 mr-1"></i>${reporterName}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end shrink-0 gap-1">
+                                <span class="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
+                                    <i class="fa-solid fa-clock text-[10px]"></i>
                                     <span id="cd-list-${item.id}">${timeMeta.remainingMin}m</span>
                                 </span>
-                            </div>
-
-                            <div>
-                                <h4 class="font-bold text-gray-900 text-sm leading-tight">${item.location}</h4>
-                                <div class="flex items-center justify-between mt-1 text-xs text-gray-500">
-                                    <span><i class="fa-solid fa-user-circle mr-1 text-green-600"></i>${reporterName}</span>
-                                    <span><i class="fa-regular fa-clock mr-1"></i>${dt12H}</span>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-2 pt-1 border-t border-gray-200/60 text-xs">
-                                <button onclick="event.stopPropagation(); triggerEdit('${safeJson}')" class="flex-1 py-1.5 bg-white text-blue-600 font-bold rounded-lg border border-gray-200 hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-1">
-                                    <i class="fa-solid fa-pen text-[10px]"></i> වෙනස්
-                                </button>
-                                <button onclick="event.stopPropagation(); triggerDelete('${item.id}')" class="flex-1 py-1.5 bg-white text-red-500 font-bold rounded-lg border border-gray-200 hover:bg-red-50 transition active:scale-95 flex items-center justify-center gap-1">
-                                    <i class="fa-solid fa-trash text-[10px]"></i> මකන්න
-                                </button>
-                                <button onclick="event.stopPropagation(); openFullscreenModal('${item.id}')" class="flex-1 py-1.5 bg-white text-gray-700 font-bold rounded-lg border border-gray-200 hover:bg-gray-50 transition active:scale-95 flex items-center justify-center gap-1">
-                                    <i class="fa-solid fa-expand text-[10px]"></i> විස්තර
-                                </button>
+                                <span class="text-[10px] text-gray-400 font-medium">${dt12H.split(' ')[1]} ${dt12H.split(' ')[2]}</span>
                             </div>
                         </div>
                     `;
                 });
+
                 document.getElementById('reportsListContainer').innerHTML = html;
             }
         }
 
-        window.focusReportOnMap = (id, lat, lng) => {
-            if (map) {
+        window.focusMarker = (id, lat, lng) => {
+            if (map && mapMarkers[id]) {
                 map.flyTo([lat, lng], 16, { duration: 0.8 });
-                if (mapMarkers[id]) {
+                setTimeout(() => {
                     mapMarkers[id].openPopup();
-                }
+                }, 800);
             }
         };
 
         window.openReportModal = (item = null, lat = null, lng = null) => {
             if (!currentUserName) {
                 openNameChangeModal();
-                showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
+                showToast("වාර්තාවක් ඇතුළත් කිරීමට ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
                 return;
             }
 
+            const modal = document.getElementById('reportModal');
             const form = document.getElementById('elephantForm');
             form.reset();
 
-            const dt = new Date();
-            document.getElementById('modalDateTime').innerText = formatDateTime12H(dt.getTime());
-            removeImage();
+            document.getElementById('formImageBase64').value = '';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imageOverlay').classList.add('hidden');
+            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('btnRemoveImg').classList.add('hidden');
+
+            const now = new Date();
+            document.getElementById('modalDateTime').innerText = formatDateTime12H(now.getTime());
 
             if (item) {
-                document.getElementById('modalTitle').innerText = 'වාර්තාව වෙනස් කරන්න';
-                document.getElementById('submitLabel').innerText = 'යාවත්කාලීන කරන්න';
+                // Editing
+                document.getElementById('modalTitle').innerText = "වාර්තාව වෙනස් කරන්න";
+                document.getElementById('submitLabel').innerText = "සුරකින්න";
                 document.getElementById('formId').value = item.id;
                 document.getElementById('formLat').value = item.lat;
                 document.getElementById('formLng').value = item.lng;
                 document.getElementById('formLocation').value = item.location || '';
                 document.getElementById('formCount').value = item.count || 1;
                 document.getElementById('formDirection').value = item.direction || '';
-                
-                if (item.risk) {
-                    const radio = form.querySelector(`input[name="riskLvl"][value="${item.risk}"]`);
-                    if (radio) radio.checked = true;
-                }
 
                 if (item.imgData) {
-                    setImagePreview(item.imgData);
+                    document.getElementById('formImageBase64').value = item.imgData;
+                    document.getElementById('imagePreview').src = item.imgData;
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                    document.getElementById('imageOverlay').classList.remove('hidden');
+                    document.getElementById('uploadPrompt').classList.add('hidden');
+                    document.getElementById('btnRemoveImg').classList.remove('hidden');
+                }
+
+                const riskRadios = document.getElementsByName('riskLvl');
+                for (let r of riskRadios) {
+                    if (r.value === item.risk) r.checked = true;
                 }
             } else {
-                document.getElementById('modalTitle').innerText = 'නව වාර්තාවක්';
-                document.getElementById('submitLabel').innerText = 'වාර්තා කරන්න';
+                // New Report
+                document.getElementById('modalTitle').innerText = "නව වාර්තාවක්";
+                document.getElementById('submitLabel').innerText = "වාර්තා කරන්න";
                 document.getElementById('formId').value = '';
-                document.getElementById('formLat').value = lat || (userMarker ? userMarker.getLatLng().lat : 7.8731);
-                document.getElementById('formLng').value = lng || (userMarker ? userMarker.getLatLng().lng : 80.7718);
+                document.getElementById('formLat').value = lat;
+                document.getElementById('formLng').value = lng;
             }
 
-            document.getElementById('reportModal').classList.remove('hidden');
+            modal.classList.remove('hidden');
         };
 
         window.closeModal = (modalId) => {
-            document.getElementById(modalId).classList.add('hidden');
-            if (modalId === 'reportModal' && tempMarker) {
+            const el = document.getElementById(modalId);
+            if (el) el.classList.add('hidden');
+            if (tempMarker) {
                 map.removeLayer(tempMarker);
                 tempMarker = null;
             }
@@ -1251,35 +1261,25 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            if (file.size > 2 * 1024 * 1024) {
-                showToast("ඡායාරූපය 2MB ට වඩා අඩු විය යුතුය.", "error");
-                return;
-            }
-
             const reader = new FileReader();
-            reader.onload = (event) => {
-                setImagePreview(event.target.result);
+            reader.onload = function(evt) {
+                const base64 = evt.target.result;
+                document.getElementById('formImageBase64').value = base64;
+                document.getElementById('imagePreview').src = base64;
+                document.getElementById('imagePreview').classList.remove('hidden');
+                document.getElementById('imageOverlay').classList.remove('hidden');
+                document.getElementById('uploadPrompt').classList.add('hidden');
+                document.getElementById('btnRemoveImg').classList.remove('hidden');
             };
             reader.readAsDataURL(file);
         };
 
-        function setImagePreview(base64Str) {
-            document.getElementById('formImageBase64').value = base64Str;
-            const imgPreview = document.getElementById('imagePreview');
-            imgPreview.src = base64Str;
-            imgPreview.classList.remove('hidden');
-            document.getElementById('uploadPrompt').classList.add('hidden');
-            document.getElementById('imageOverlay').classList.remove('hidden');
-            document.getElementById('btnRemoveImg').classList.remove('hidden');
-        }
-
         window.removeImage = () => {
             document.getElementById('formImageBase64').value = '';
-            const imgPreview = document.getElementById('imagePreview');
-            imgPreview.src = '';
-            imgPreview.classList.add('hidden');
-            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imagePreview').classList.add('hidden');
             document.getElementById('imageOverlay').classList.add('hidden');
+            document.getElementById('uploadPrompt').classList.remove('hidden');
             document.getElementById('btnRemoveImg').classList.add('hidden');
             document.getElementById('cameraInput').value = '';
             document.getElementById('galleryInput').value = '';
@@ -1288,11 +1288,10 @@
         window.triggerEdit = (jsonStr) => {
             try {
                 const item = JSON.parse(decodeURIComponent(jsonStr));
-                closeFullscreenModal();
-                if (map) map.closePopup();
+                if (activeFullscreenReportId) closeFullscreenModal();
                 openReportModal(item);
-            } catch (e) {
-                console.error("Edit parse error:", e);
+            } catch (err) {
+                console.error("Edit parse error:", err);
             }
         };
 
@@ -1305,29 +1304,18 @@
             if (!targetDeleteId) return;
             try {
                 await deleteDoc(doc(db, 'reports', targetDeleteId));
-                showToast("වාර්තාව මකා දමන ලදී.");
                 closeModal('deleteModal');
-                closeFullscreenModal();
-                if (map) map.closePopup();
+                if (activeFullscreenReportId === targetDeleteId) closeFullscreenModal();
+                showToast("වාර්තාව සාර්ථකව මකා දමන ලදී.");
             } catch (err) {
                 console.error("Delete error:", err);
                 showToast("මකා දැමීම අසාර්ථකයි.", "error");
-            } finally {
-                targetDeleteId = null;
             }
         });
 
+        // Form Submit Handler
         document.getElementById('elephantForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!currentUserName) {
-                openNameChangeModal();
-                showToast("කරුණාකර ප්‍රථමයෙන් ඔබගේ නම ඇතුළත් කරන්න.", "error");
-                return;
-            }
-
-            const submitBtn = document.getElementById('btnSubmit');
-            submitBtn.disabled = true;
-            submitBtn.classList.add('opacity-70');
 
             const id = document.getElementById('formId').value;
             const lat = parseFloat(document.getElementById('formLat').value);
@@ -1336,53 +1324,52 @@
             const count = parseInt(document.getElementById('formCount').value) || 1;
             const direction = document.getElementById('formDirection').value.trim();
             const imgData = document.getElementById('formImageBase64').value;
-            
-            const riskLvlRadio = document.querySelector('input[name="riskLvl"]:checked');
-            const risk = riskLvlRadio ? riskLvlRadio.value : 'high';
 
-            const payload = {
-                lat,
-                lng,
-                location,
-                count,
-                direction,
-                risk,
-                imgData,
-                userName: currentUserName,
-                timestamp: Date.now()
-            };
+            let risk = 'high';
+            const riskRadios = document.getElementsByName('riskLvl');
+            for (let r of riskRadios) {
+                if (r.checked) risk = r.value;
+            }
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> සුරකිමින්...`;
 
             try {
                 if (id) {
-                    await updateDoc(doc(db, 'reports', id), payload);
-                    showToast("වාර්තාව යාවත්කාලීන කෙරිණි!");
+                    // Update
+                    await updateDoc(doc(db, 'reports', id), {
+                        location, count, direction, risk, imgData,
+                        userName: currentUserName || 'අනනාමික'
+                    });
+                    showToast("වාර්තාව යාවත්කාලීන කරන ලදී!");
                 } else {
+                    // Create
                     await addDoc(collection(db, 'reports'), {
-                        ...payload,
+                        lat, lng, location, count, direction, risk, imgData,
+                        timestamp: Date.now(),
+                        userName: currentUserName || 'අනනාමික',
                         comments: []
                     });
-                    showToast("නව වාර්තාව සාර්ථකව ඇතුළත් කෙරිණි!");
-                    if (payload.risk === 'high') {
-                        playAlertSiren();
-                        triggerVisualAlert(payload);
-                    }
+                    showToast("නව වාර්තාව සාර්ථකව ඇතුළත් කරන ලදී!");
                 }
+
                 closeModal('reportModal');
             } catch (err) {
-                console.error("Submit error:", err);
-                showToast("වාර්තා කිරීම අසාර්ථකයි.", "error");
+                console.error("Save error:", err);
+                showToast("සුරැකීමේ දෝෂයක් සිදු විය.", "error");
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-70');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>`;
             }
         });
 
-        // App Initialization
+        // Init on DOM Content Loaded
         window.addEventListener('DOMContentLoaded', () => {
             initializeMap();
+            connectFirebase();
             initSwipeGestures();
             checkUserLogin();
-            connectFirebase();
         });
     </script>
 </body>
