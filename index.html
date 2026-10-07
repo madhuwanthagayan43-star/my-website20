@@ -38,11 +38,7 @@
         .leaflet-popup-pane { z-index: 1000 !important; }
         .leaflet-control-container { z-index: 60 !important; }
         
-        .leaflet-popup {
-            pointer-events: none !important;
-        }
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            pointer-events: auto !important;
             border-radius: 1rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             padding: 0;
@@ -50,12 +46,10 @@
             background: #fff;
         }
         .leaflet-popup-content {
-            pointer-events: auto !important;
-            margin: 0;
+            margin: 0 !important;
             width: 290px !important;
         }
         .leaflet-container a.leaflet-popup-close-button {
-            pointer-events: auto !important;
             top: 8px;
             right: 8px;
             color: #666;
@@ -250,7 +244,7 @@
     <div id="reportModal" class="hidden fixed inset-0 modal-top-safe z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity" onclick="closeModal('reportModal')"></div>
         
-        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0 cursor-pointer" onclick="handleModalClick(event)">
+        <div id="reportModalContainer" class="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] shadow-2xl relative z-10 max-h-[calc(100dvh-20px)] flex flex-col transform transition-all duration-300 translate-y-0" onclick="event.stopPropagation()">
             
             <div class="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-[32px]">
                 <div>
@@ -258,16 +252,16 @@
                     <p class="text-xs text-gray-500 font-medium mt-0.5"><i class="fa-regular fa-calendar-check mr-1"></i> <span id="modalDateTime"></span></p>
                 </div>
                 <div class="flex items-center gap-2 pointer-events-auto">
-                    <button onclick="event.stopPropagation(); toggleModalFullscreen()" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition" title="Full Screen">
+                    <button onclick="toggleModalFullscreen()" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition" title="Full Screen">
                         <i id="fullscreenIcon" class="fa-solid fa-expand text-xs"></i>
                     </button>
-                    <button onclick="event.stopPropagation(); closeModal('reportModal')" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
+                    <button onclick="closeModal('reportModal')" class="w-8 h-8 bg-gray-200/80 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 active:scale-95 transition">
                         <i class="fa-solid fa-xmark text-base"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1 cursor-default" onclick="event.stopPropagation()">
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1">
                 <form id="elephantForm" class="space-y-4">
                     <input type="hidden" id="formId">
                     <input type="hidden" id="formLat">
@@ -337,7 +331,7 @@
                 </form>
             </div>
 
-            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] cursor-default" onclick="event.stopPropagation()">
+            <div class="p-4 border-t border-gray-100 flex gap-3 bg-white rounded-b-[32px] shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
                 <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 active:scale-95 transition text-sm">අවලංගුයි</button>
                 <button type="submit" form="elephantForm" id="btnSubmit" class="flex-[2] px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-bold shadow-[0_4px_15px_rgba(34,197,94,0.4)] hover:shadow-lg active:scale-95 transition text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane"></i> <span id="submitLabel">වාර්තා කරන්න</span>
@@ -582,13 +576,6 @@
             }
         };
 
-        window.handleModalClick = (e) => {
-            const container = document.getElementById('reportModalContainer');
-            if (container.classList.contains('max-h-[calc(100dvh-20px)]')) {
-                toggleModalFullscreen();
-            }
-        };
-
         window.openImageSourceModal = () => {
             document.getElementById('imageSourceModal').classList.remove('hidden');
         };
@@ -667,8 +654,14 @@
                 setTimeout(() => openReportModal(null, e.latlng.lat, e.latlng.lng), 400);
             });
 
-            map.on('popupopen', () => {
+            map.on('popupopen', (e) => {
                 setBottomSheetState('hidden');
+                // Allow interactions inside popup without map pan conflicts
+                const px = e.popup._container;
+                if(px) {
+                    L.DomEvent.disableClickPropagation(px);
+                    L.DomEvent.disableScrollPropagation(px);
+                }
             });
 
             if ("geolocation" in navigator) {
@@ -815,7 +808,6 @@
                         ${sortedComments.map(c => {
                             const isOwner = (c.userName === currentUserName) || (c.userId === currentUser.uid);
                             const cTime = formatDateTime12H(c.timestamp);
-                            const safeText = (c.text || '').replace(/"/g, '&quot;').replace(/'/g, "\\'");
                             return `
                                 <div class="bg-gray-50 p-2 rounded-xl border border-gray-200 text-xs text-gray-800 space-y-1">
                                     <div class="flex items-center justify-between">
@@ -827,10 +819,10 @@
                                     <p class="text-gray-700 leading-snug m-0 text-[11px] font-medium break-words">${c.text}</p>
                                     ${isOwner ? `
                                         <div class="flex justify-end gap-2 pt-1 border-t border-gray-100 text-[10px]">
-                                            <button onclick="event.stopPropagation(); editComment('${item.id}', '${c.id}', '${safeText}')" class="text-blue-600 hover:underline font-bold flex items-center gap-1">
+                                            <button onclick="editComment('${item.id}', '${c.id}')" class="text-blue-600 hover:underline font-bold flex items-center gap-1">
                                                 <i class="fa-solid fa-pen text-[9px]"></i> වෙනස්
                                             </button>
-                                            <button onclick="event.stopPropagation(); deleteComment('${item.id}', '${c.id}')" class="text-red-500 hover:underline font-bold flex items-center gap-1">
+                                            <button onclick="deleteComment('${item.id}', '${c.id}')" class="text-red-500 hover:underline font-bold flex items-center gap-1">
                                                 <i class="fa-solid fa-trash text-[9px]"></i> මකන්න
                                             </button>
                                         </div>
@@ -843,7 +835,7 @@
             }
 
             return `
-                <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 mt-2 space-y-2" onclick="event.stopPropagation()">
+                <div class="bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 mt-2 space-y-2">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-gray-700 flex items-center gap-1">
                             <i class="fa-solid fa-comments text-green-600"></i> අදහස් දැක්වීම්
@@ -856,9 +848,8 @@
                     <div class="flex gap-1.5 items-center">
                         <input type="text" id="${inputId}" placeholder="අදහසක් එක් කරන්න..." 
                             class="flex-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs outline-none focus:border-green-500 bg-white font-medium"
-                            onkeydown="if(event.key==='Enter'){ event.stopPropagation(); addComment('${item.id}', '${inputId}'); }"
-                            onclick="event.stopPropagation();">
-                        <button onclick="event.stopPropagation(); addComment('${item.id}', '${inputId}')" 
+                            onkeydown="if(event.key==='Enter'){ addComment('${item.id}', '${inputId}'); }">
+                        <button onclick="addComment('${item.id}', '${inputId}')" 
                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition active:scale-95 shrink-0 flex items-center gap-1">
                             <i class="fa-solid fa-paper-plane text-[10px]"></i>
                         </button>
@@ -904,11 +895,14 @@
             }
         };
 
-        window.editComment = async (reportId, commentId, currentText) => {
+        window.editComment = async (reportId, commentId) => {
             const report = reportsData.find(r => r.id === reportId);
             if (!report) return;
 
-            const newText = prompt("ඔබගේ අදහස වෙනස් කරන්න:", currentText);
+            const currentComment = (report.comments || []).find(c => c.id === commentId);
+            if(!currentComment) return;
+
+            const newText = prompt("ඔබගේ අදහස වෙනස් කරන්න:", currentComment.text);
             if (newText === null) return;
             const trimmed = newText.trim();
             if (!trimmed) return showToast("අදහස හිස් විය නොහැක.", "error");
@@ -954,7 +948,6 @@
             const dt12H = formatDateTime12H(item.timestamp);
             const timeMeta = getTimeMeta(item.timestamp);
             const reporterName = item.userName || 'අනනාමික';
-            const safeJson = encodeURIComponent(JSON.stringify(item));
             const commentsSectionHTML = buildCommentsSectionHTML(item, true);
 
             fullModalBody.innerHTML = `
@@ -994,8 +987,8 @@
                     </div>
 
                     ${item.imgData ? `
-                    <div class="mt-3 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
-                        <img src="${item.imgData}" class="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-200" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                    <div class="mt-3 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="openLightbox('${item.imgData}')">
+                        <img src="${item.imgData}" class="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-200">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-bold pointer-events-none">
                             <i class="fa-solid fa-expand mr-2"></i> ලොකුවට බලන්න
                         </div>
@@ -1008,7 +1001,7 @@
                     </div>
 
                     <div class="flex gap-3 pt-3">
-                        <button onclick="triggerEdit('${safeJson}')" class="flex-1 bg-blue-50 text-blue-600 text-sm py-3.5 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm"><i class="fa-solid fa-pen mr-1.5"></i> වෙනස් කරන්න</button>
+                        <button onclick="triggerEdit('${item.id}')" class="flex-1 bg-blue-50 text-blue-600 text-sm py-3.5 rounded-xl font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95 shadow-sm"><i class="fa-solid fa-pen mr-1.5"></i> වෙනස් කරන්න</button>
                         <button onclick="triggerDelete('${item.id}')" class="flex-1 bg-red-50 text-red-600 text-sm py-3.5 rounded-xl font-bold hover:bg-red-700 hover:text-white transition border border-red-200 active:scale-95 shadow-sm"><i class="fa-solid fa-trash mr-1.5"></i> මකන්න</button>
                     </div>
                 </div>
@@ -1039,7 +1032,6 @@
                 if (!activeIds.includes(id)) { map.removeLayer(mapMarkers[id]); delete mapMarkers[id]; }
             });
 
-            // Update open Fullscreen Modal if active
             if (activeFullscreenReportId) {
                 const activeReport = reportsData.find(r => r.id === activeFullscreenReportId);
                 if (activeReport) {
@@ -1056,11 +1048,10 @@
                     const theme = getRiskTheme(item.risk);
                     const dt12H = formatDateTime12H(item.timestamp);
                     const timeMeta = getTimeMeta(item.timestamp);
-                    const safeJson = encodeURIComponent(JSON.stringify(item));
                     
                     const imgHtml = item.imgData ? `
-                        <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
-                            <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200" onclick="event.stopPropagation(); openLightbox('${item.imgData}')">
+                        <div class="mt-2 rounded-xl overflow-hidden shadow-sm cursor-pointer group relative" onclick="openLightbox('${item.imgData}')">
+                            <img src="${item.imgData}" class="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200">
                             <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold pointer-events-none">
                                 <i class="fa-solid fa-expand mr-1"></i> ලොකුවට බලන්න
                             </div>
@@ -1115,7 +1106,7 @@
 
                             <div class="flex gap-1.5 pt-1">
                                 <button onclick="openFullscreenModal('${item.id}')" class="flex-1 bg-gray-100 text-gray-700 text-[11px] py-1.5 rounded-lg font-bold hover:bg-gray-200 transition border border-gray-200 active:scale-95 flex items-center justify-center gap-1"><i class="fa-solid fa-expand text-[10px]"></i> විස්තර</button>
-                                <button onclick="triggerEdit('${safeJson}')" class="bg-blue-50 text-blue-600 text-[11px] px-2.5 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="triggerEdit('${item.id}')" class="bg-blue-50 text-blue-600 text-[11px] px-2.5 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-200 active:scale-95"><i class="fa-solid fa-pen"></i></button>
                                 <button onclick="triggerDelete('${item.id}')" class="bg-red-50 text-red-600 text-[11px] px-2.5 py-1.5 rounded-lg font-bold hover:bg-red-100 transition border border-red-200 active:scale-95"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
@@ -1269,8 +1260,9 @@
             document.getElementById('galleryInput').value = '';
         };
 
-        window.triggerEdit = (safeJson) => {
-            const item = JSON.parse(decodeURIComponent(safeJson));
+        window.triggerEdit = (id) => {
+            const item = reportsData.find(r => r.id === id);
+            if(!item) return;
             closeFullscreenModal();
             if (map) map.closePopup();
             openReportModal(item);
