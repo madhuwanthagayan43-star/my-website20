@@ -898,6 +898,12 @@
                 await updateDoc(doc(db, 'reports', reportId), { comments: updatedComments });
                 inputEl.value = '';
                 showToast("අදහස සාර්ථකව එක් කෙරිණි!");
+                // Line ~764 (showToast එකට පසුව)
+                showToast("gayan1");
+                const marker = mapMarkers[reportId];
+                if (marker && marker.isPopupOpen()) marker.getPopup().fire('popupopen');
+
+                
             } catch (err) {
                 console.error("Comment add error:", err);
                 showToast("අදහස එක් කිරීම අසාර්ථකයි.", "error");
@@ -923,6 +929,12 @@
             try {
                 await updateDoc(doc(db, 'reports', reportId), { comments: updatedComments });
                 showToast("අදහස වෙනස් කරන ලදී.");
+                // Line ~793 (showToast එකට පසුව)
+                showToast("gayan3");
+                const marker = mapMarkers[reportId];
+                if (marker && marker.isPopupOpen()) marker.getPopup().fire('popupopen');
+
+
             } catch (err) {
                 console.error("Comment edit error:", err);
                 showToast("වෙනස් කිරීම අසාර්ථකයි.", "error");
@@ -940,6 +952,11 @@
             try {
                 await updateDoc(doc(db, 'reports', reportId), { comments: updatedComments });
                 showToast("අදහස මකා දමන ලදී.");
+                // Line ~812 (showToast එකට පසුව)
+                showToast("gayan2");
+                const marker = mapMarkers[reportId];
+                if (marker && marker.isPopupOpen()) marker.getPopup().fire('popupopen');
+
             } catch (err) {
                 console.error("Comment delete error:", err);
                 showToast("මකා දැමීම අසාර්ථකයි.", "error");
